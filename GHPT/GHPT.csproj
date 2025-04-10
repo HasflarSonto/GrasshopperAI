@@ -25,9 +25,13 @@
   
   <ItemGroup>
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
-    <PackageReference Include="Grasshopper" Version="7.13.21348.13001" IncludeAssets="compile;build" />
+    <PackageReference Include="Grasshopper" Version="8.6.24101.5001" IncludeAssets="compile;build" />
+    <PackageReference Include="RhinoCommon" Version="8.6.24101.5001" IncludeAssets="compile;build" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.Text.Json" Version="7.0.3" />
+    <PackageReference Include="System.Text.Json" Version="7.0.0">
+      <Private>True</Private>
+      <CopyLocal>True</CopyLocal>
+    </PackageReference>
   </ItemGroup>
   
   <ItemGroup>
@@ -38,6 +42,10 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
+    <Reference Include="GH_IO">
+      <HintPath>$(ProgramFiles)\Rhino 8\System\GH_IO.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   
   <ItemGroup>
@@ -65,7 +73,7 @@
   </ItemGroup>
   
   <PropertyGroup Condition="$(Configuration) == 'Debug' AND $([MSBuild]::IsOSPlatform(Windows))">
-    <StartProgram>C:\Program Files\Rhino 7\System\Rhino.exe</StartProgram>
+    <StartProgram>C:\Program Files\Rhino 8\System\Rhino.exe</StartProgram>
     <StartArguments></StartArguments>
     <StartAction>Program</StartAction>
   </PropertyGroup>

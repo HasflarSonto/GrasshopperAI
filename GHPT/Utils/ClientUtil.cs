@@ -2,6 +2,9 @@
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Grasshopper.Kernel;
+using Grasshopper.Kernel.Special;
+using System.Linq;
 
 namespace GHPT.Utils
 {
@@ -19,15 +22,62 @@ namespace GHPT.Utils
 			var client = new HttpClient();
 			client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.Token}");
 
-			var response = await client.PostAsync(url, new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json"));
+			var jsonPayload = JsonConvert.SerializeObject(payload);
+			CreateDebugPanel($"Sending request to OpenAI API:\nModel: {config.Model}\nTemperature: {temperature}\nPayload: {jsonPayload}", "API Request");
+
+			var response = await client.PostAsync(url, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 
 			int statusCode = (int)response.StatusCode;
 			if (statusCode < 200 || statusCode >= 300)
-				throw new System.Exception($"Error: {response.StatusCode} {response.ReasonPhrase} {await response.Content.ReadAsStringAsync()}");
+			{
+				var errorContent = await response.Content.ReadAsStringAsync();
+				CreateDebugPanel($"API Error: {response.StatusCode} {response.ReasonPhrase}\n{errorContent}", "API Error");
+				throw new System.Exception($"Error: {response.StatusCode} {response.ReasonPhrase} {errorContent}");
+			}
 
 			var result = await response.Content.ReadAsStringAsync();
+			CreateDebugPanel($"Received API response:\n{result}", "API Response");
 
 			return JsonConvert.DeserializeObject<ResponsePayload>(result);
+		}
+
+		private static void CreateDebugPanel(string content, string name)
+		{
+			try
+			{
+				var doc = Grasshopper.Instances.ActiveCanvas.Document;
+				if (doc == null) return;
+
+				var panel = new GH_Panel();
+				panel.NickName = name;
+				panel.UserText = content;
+				panel.CreateAttributes();
+				
+				// Find the GHPT component using a different approach
+				IGH_DocumentObject ghptComponent = null;
+				foreach (var obj in doc.Objects)
+				{
+					if (obj.GetType().Name == "GHPT")
+					{
+						ghptComponent = obj;
+						break;
+					}
+				}
+
+				if (ghptComponent != null)
+				{
+					var pivot = ghptComponent.Attributes.Pivot;
+					panel.Attributes.Pivot = new System.Drawing.PointF(pivot.X + 300, pivot.Y);
+				}
+
+				doc.AddObject(panel, false);
+				doc.NewSolution(true, GH_SolutionMode.Silent);
+			}
+			catch (Exception ex)
+			{
+				// If we can't create the panel, at least log the error
+				Console.WriteLine($"Error creating debug panel: {ex.Message}");
+			}
 		}
 	}
 }
