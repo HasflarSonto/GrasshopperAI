@@ -8,11 +8,25 @@ using Grasshopper.Kernel.Special;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 
 namespace GHPT.Utils
 {
     public static class GraphUtil
     {
+        private static readonly string LogFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "GHPT_Debug.log");
+
+        private static void LogToFile(string message)
+        {
+            try
+            {
+                File.AppendAllText(LogFilePath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to write to log file: {ex.Message}");
+            }
+        }
 
         private static readonly Dictionary<string, string> fuzzyPairs = new()
         {
@@ -22,51 +36,93 @@ namespace GHPT.Utils
 
         private static readonly Dictionary<int, IGH_DocumentObject> CreatedComponents = new();
 
-
         public static void InstantiateComponent(GH_Document doc, Addition addition, System.Drawing.PointF pivot)
         {
             try
             {
+                LogToFile($"Attempting to create component: {addition.Name} (ID: {addition.Id}) at position ({pivot.X}, {pivot.Y})");
+                
                 string name = addition.Name;
                 IGH_ObjectProxy myProxy = GetObject(name);
                 if (myProxy is null)
+                {
+                    LogToFile($"Failed to find component proxy for: {name}");
                     return;
+                }
 
                 Guid myId = myProxy.Guid;
+                LogToFile($"Found component proxy with GUID: {myId}");
 
                 if (CreatedComponents.ContainsKey(addition.Id))
                 {
+                    LogToFile($"Removing existing component with ID: {addition.Id}");
                     CreatedComponents.Remove(addition.Id);
                 }
 
                 var emit = Instances.ComponentServer.EmitObject(myId);
                 CreatedComponents.Add(addition.Id, emit);
+                LogToFile($"Created component instance with ID: {addition.Id}");
 
                 doc.AddObject(emit, false);
                 emit.Attributes.Pivot = pivot;
                 SetValue(addition, emit);
+                LogToFile($"Successfully added component to document and set value");
             }
-            catch
+            catch (Exception ex)
             {
+                LogToFile($"Error in InstantiateComponent: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
         public static void ConnectComponent(GH_Document doc, ConnectionPairing pairing)
         {
-            CreatedComponents.TryGetValue(pairing.From.Id, out IGH_DocumentObject componentFrom);
-            CreatedComponents.TryGetValue(pairing.To.Id, out IGH_DocumentObject componentTo);
-
-            IGH_Param fromParam = GetParam(componentFrom, pairing.From, false);
-            IGH_Param toParam = GetParam(componentTo, pairing.To, true);
-
-            if (fromParam is null || toParam is null)
+            try
             {
-                return;
-            }
+                LogToFile($"Attempting to connect components: {pairing.From.Id} -> {pairing.To.Id}");
+                LogToFile($"Connection details - From: {pairing.From.ParameterName}, To: {pairing.To.ParameterName}");
+                
+                CreatedComponents.TryGetValue(pairing.From.Id, out IGH_DocumentObject componentFrom);
+                CreatedComponents.TryGetValue(pairing.To.Id, out IGH_DocumentObject componentTo);
 
-            toParam.AddSource(fromParam);
-            toParam.CollectData();
-            toParam.ComputeData();
+                if (componentFrom == null || componentTo == null)
+                {
+                    LogToFile($"Failed to find components: From={componentFrom == null}, To={componentTo == null}");
+                    return;
+                }
+
+                LogToFile($"Found components: From={componentFrom.GetType().Name}, To={componentTo.GetType().Name}");
+
+                IGH_Param fromParam = GetParam(componentFrom, pairing.From, false);
+                IGH_Param toParam = GetParam(componentTo, pairing.To, true);
+
+                if (fromParam is null || toParam is null)
+                {
+                    LogToFile($"Failed to find parameters: From={fromParam == null}, To={toParam == null}");
+                    return;
+                }
+
+                LogToFile($"Found parameters: From={fromParam.Name}, To={toParam.Name}");
+
+                try
+                {
+                    toParam.AddSource(fromParam);
+                    LogToFile("Added source parameter");
+
+                    toParam.CollectData();
+                    LogToFile("Collected data");
+
+                    toParam.ComputeData();
+                    LogToFile("Computed data");
+                }
+                catch (Exception ex)
+                {
+                    LogToFile($"Error during connection: {ex.Message}\n{ex.StackTrace}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error in ConnectComponent: {ex.Message}\n{ex.StackTrace}");
+            }
         }
 
         private static IGH_Param GetParam(IGH_DocumentObject docObj, Connection connection, bool isInput)
@@ -86,27 +142,70 @@ namespace GHPT.Utils
             IList<IGH_Param> _params = (isInput ? component.Params.Input : component.Params.Output)?.ToArray();
 
             if (_params is null || _params.Count == 0)
+            {
+                LogToFile($"No parameters found for component {component.GetType().Name} (Input={isInput})");
                 return null;
+            }
+
+            LogToFile($"Available parameters for {component.GetType().Name}: {string.Join(", ", _params.Select(p => p.Name))}");
+            LogToFile($"Looking for parameter: {connection.ParameterName}");
 
             if (_params.Count() <= 1)
-                return _params.First();
+            {
+                var param = _params.First();
+                LogToFile($"Only one parameter available, using: {param.Name}");
+                return param;
+            }
 
-            // Linq Alternative to below
-            // _params.First(p => p.Name.ToLowerInvariant() == connection.ParameterName.ToLowerInvariant());
+            // First try exact match (case insensitive)
             foreach (var _param in _params)
             {
                 if (_param.Name.ToLowerInvariant() == connection.ParameterName.ToLowerInvariant())
                 {
+                    LogToFile($"Found exact parameter match: {_param.Name}");
                     return _param;
                 }
             }
 
-            ExtractedResult<string> fuzzyResult = Process.ExtractOne(connection.ParameterName, _params.Select(_p => _p.Name));
-            if (fuzzyResult.Score >= 50)
+            // Then try partial match
+            foreach (var _param in _params)
             {
-                return _params[fuzzyResult.Index];
+                if (_param.Name.ToLowerInvariant().Contains(connection.ParameterName.ToLowerInvariant()) ||
+                    connection.ParameterName.ToLowerInvariant().Contains(_param.Name.ToLowerInvariant()))
+                {
+                    LogToFile($"Found partial parameter match: {_param.Name}");
+                    return _param;
+                }
             }
 
+            // Try common parameter name mappings
+            var commonMappings = new Dictionary<string, string>
+            {
+                { "geometry", "geometry" },
+                { "curve", "curve" },
+                { "curves", "curve" },
+                { "point", "point" },
+                { "points", "point" },
+                { "number", "number" },
+                { "value", "number" },
+                { "input", "input" },
+                { "output", "output" }
+            };
+
+            foreach (var _param in _params)
+            {
+                var paramName = _param.Name.ToLowerInvariant();
+                var targetName = connection.ParameterName.ToLowerInvariant();
+
+                if (commonMappings.TryGetValue(targetName, out string mappedName) && 
+                    paramName.Contains(mappedName))
+                {
+                    LogToFile($"Found mapped parameter match: {_param.Name}");
+                    return _param;
+                }
+            }
+
+            LogToFile($"No parameter match found for: {connection.ParameterName}");
             return null;
         }
 

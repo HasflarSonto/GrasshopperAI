@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using System.Linq;
+using System.IO;
 
 namespace GHPT.Utils
 {
@@ -13,6 +14,20 @@ namespace GHPT.Utils
 	{
 
 		private const string SPLITTER = "// JSON: ";
+		private static readonly string LogFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "GHPT_Debug.log");
+
+		private static void LogToFile(string message)
+		{
+			try
+			{
+				File.AppendAllText(LogFilePath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}");
+			}
+			catch (Exception ex)
+			{
+				// If we can't write to the log file, at least try to write to the console
+				Console.WriteLine($"Failed to write to log file: {ex.Message}");
+			}
+		}
 
 		public static string GetChatGPTJson(string chatGPTResponse)
 		{
@@ -144,16 +159,16 @@ namespace GHPT.Utils
 		{
 			try
 			{
-				CreateDebugPanel($"Starting AskQuestion with config: {config.Name}, Model: {config.Model}", "API Request");
+				LogToFile($"Starting AskQuestion with config: {config.Name}, Model: {config.Model}");
 				string prompt = Prompt.GetPrompt(question);
-				CreateDebugPanel($"Generated prompt:\n{prompt}", "Prompt Generation");
+				LogToFile($"Generated prompt:\n{prompt}");
 				
 				var payload = await ClientUtil.Ask(config, prompt);
-				Console.WriteLine($"API Response received: {payload != null}");
+				LogToFile($"API Response received: {payload != null}");
 				
 				if (payload == null || payload.Choices == null || !payload.Choices.Any())
 				{
-					Console.WriteLine("No valid response from API");
+					LogToFile("No valid response from API");
 					return new PromptData()
 					{
 						Additions = new List<Addition>(),
@@ -163,12 +178,11 @@ namespace GHPT.Utils
 				}
 
 				string payloadJson = payload.Choices.FirstOrDefault().Message.Content;
-				Console.WriteLine($"Raw response content: {payloadJson}");
+				LogToFile($"Raw response content: {payloadJson}");
 				
-				// Check for exact TOO_COMPLEX match
 				if (payloadJson.Trim() == Prompt.TOO_COMPLEX)
 				{
-					Console.WriteLine("Exact TOO_COMPLEX match found");
+					LogToFile("Exact TOO_COMPLEX match found");
 					return new PromptData()
 					{
 						Additions = new List<Addition>(),
@@ -178,13 +192,13 @@ namespace GHPT.Utils
 				}
 
 				string chatGPTJson = GetChatGPTJson(payloadJson);
-				Console.WriteLine($"Extracted JSON: {chatGPTJson}");
+				LogToFile($"Extracted JSON: {chatGPTJson}");
 				
 				return GetPromptDataFromResponse(chatGPTJson);
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"Error in AskQuestion: {ex.Message}\n{ex.StackTrace}");
+				LogToFile($"Error in AskQuestion: {ex.Message}\n{ex.StackTrace}");
 				return new PromptData()
 				{
 					Additions = new List<Addition>(),
