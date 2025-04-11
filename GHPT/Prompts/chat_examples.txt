@@ -1,0 +1,509 @@
+// Example 1: Basic Component Creation
+User: Create a circle with radius 5
+AI: I'll create a circle with radius 5 for you.
+// JSON:
+{
+    "Advice": "You can adjust the radius using the number slider",
+    "Additions": [
+        {
+            "Name": "Circle CNR",
+            "Id": 1
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 2,
+            "value": "0..5..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 1,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 2,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+// Example 2: Component Editing
+User: Make the circle bigger
+AI: I'll increase the radius of the circle (component 1).
+// JSON:
+{
+    "Advice": "Adjust the number slider to change the circle size",
+    "Additions": [
+        {
+            "Name": "Number Slider",
+            "Id": 3,
+            "value": "0..10..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 1,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 3,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+// Example 3: Component Connection
+User: Add a move component and connect it to the circle
+AI: I'll add a Move component and connect it to your circle (component 1).
+// JSON:
+{
+    "Advice": "The circle will be moved along the Z axis",
+    "Additions": [
+        {
+            "Name": "Move",
+            "Id": 4
+        },
+        {
+            "Name": "Unit Z",
+            "Id": 5
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 6,
+            "value": "0..10..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 4,
+                "ParameterName": "Geometry"
+            },
+            "From": {
+                "Id": 1,
+                "ParameterName": "Circle"
+            }
+        },
+        {
+            "To": {
+                "Id": 4,
+                "ParameterName": "Motion"
+            },
+            "From": {
+                "Id": 5,
+                "ParameterName": "Unit vector"
+            }
+        },
+        {
+            "To": {
+                "Id": 4,
+                "ParameterName": "Distance"
+            },
+            "From": {
+                "Id": 6,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+// Example 4: Multiple Component Creation
+User: Create a loft between two circles
+AI: I'll create two circles and a loft component to connect them.
+// JSON:
+{
+    "Advice": "Adjust the number sliders to control the circle sizes and positions",
+    "Additions": [
+        {
+            "Name": "Circle CNR",
+            "Id": 7
+        },
+        {
+            "Name": "Circle CNR",
+            "Id": 8
+        },
+        {
+            "Name": "Loft",
+            "Id": 9
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 10,
+            "value": "0..5..100"
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 11,
+            "value": "0..8..100"
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 12,
+            "value": "0..20..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 7,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 10,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 8,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 11,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 9,
+                "ParameterName": "Curves"
+            },
+            "From": {
+                "Id": 7,
+                "ParameterName": "Circle"
+            }
+        },
+        {
+            "To": {
+                "Id": 9,
+                "ParameterName": "Curves"
+            },
+            "From": {
+                "Id": 8,
+                "ParameterName": "Circle"
+            }
+        }
+    ]
+}
+
+// Example 5: Component Deletion
+User: Remove the first circle
+AI: I'll remove the first circle (component 1) and its connections.
+// JSON:
+{
+    "Advice": "The circle and its connections will be removed",
+    "Additions": [],
+    "Connections": [],
+    "Removals": [
+        {
+            "Id": 1,
+            "Type": "Circle CNR"
+        }
+    ]
+}
+
+// Example 6: Parameter Modification
+User: Change the radius of the remaining circle to 8
+AI: I'll modify the radius of the circle (component 2) to 8.
+// JSON:
+{
+    "Advice": "The circle's radius will be updated to 8",
+    "Additions": [
+        {
+            "Name": "Number Slider",
+            "Id": 22,
+            "value": "0..8..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 2,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 22,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+// Example 7: Complex Operation
+User: Create a twisted tower
+AI: I'll create a tower using extrusion and twist components.
+// JSON:
+{
+    "Advice": "Adjust the number sliders to control the tower's dimensions and twist",
+    "Additions": [
+        {
+            "Name": "Rectangle",
+            "Id": 13
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 14,
+            "value": "0..50..100"
+        },
+        {
+            "Name": "Unit Z",
+            "Id": 15
+        },
+        {
+            "Name": "Extrusion",
+            "Id": 16
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 17,
+            "value": "0..90..360"
+        },
+        {
+            "Name": "Line",
+            "Id": 18
+        },
+        {
+            "Name": "Point",
+            "Id": 19,
+            "value": "{0,0,0}"
+        },
+        {
+            "Name": "Point",
+            "Id": 20,
+            "value": "{0,0,250}"
+        },
+        {
+            "Name": "Twist",
+            "Id": 21
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 16,
+                "ParameterName": "Base"
+            },
+            "From": {
+                "Id": 13,
+                "ParameterName": "Rectangle"
+            }
+        },
+        {
+            "To": {
+                "Id": 15,
+                "ParameterName": "Factor"
+            },
+            "From": {
+                "Id": 14,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Angle"
+            },
+            "From": {
+                "Id": 17,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 16,
+                "ParameterName": "Direction"
+            },
+            "From": {
+                "Id": 15,
+                "ParameterName": "Unit vector"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Geometry"
+            },
+            "From": {
+                "Id": 16,
+                "ParameterName": "Extrusion"
+            }
+        },
+        {
+            "To": {
+                "Id": 18,
+                "ParameterName": "Start Point"
+            },
+            "From": {
+                "Id": 19,
+                "ParameterName": "Point"
+            }
+        },
+        {
+            "To": {
+                "Id": 18,
+                "ParameterName": "End Point"
+            },
+            "From": {
+                "Id": 20,
+                "ParameterName": "Point"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Axis"
+            },
+            "From": {
+                "Id": 18,
+                "ParameterName": "Line"
+            }
+        }
+    ]
+}
+
+// Example 8: Component Reference
+User: Make the tower taller
+AI: I'll increase the height of the extrusion (component 2) to make the tower taller.
+// JSON:
+{
+    "Advice": "The tower's height will be increased",
+    "Additions": [
+        {
+            "Name": "Number Slider",
+            "Id": 23,
+            "value": "0..200..500"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 16,
+                "ParameterName": "Direction"
+            },
+            "From": {
+                "Id": 23,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+// Example 9: Multiple Operations
+User: Add windows to the tower and make it twist more
+AI: I'll add windows using boolean operations and increase the twist angle.
+// JSON:
+{
+    "Advice": "Windows will be added to the tower and the twist angle will be increased",
+    "Additions": [
+        {
+            "Name": "Rectangle",
+            "Id": 24
+        },
+        {
+            "Name": "Array",
+            "Id": 25
+        },
+        {
+            "Name": "Boolean Difference",
+            "Id": 26
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 27,
+            "value": "0..180..360"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 25,
+                "ParameterName": "Geometry"
+            },
+            "From": {
+                "Id": 24,
+                "ParameterName": "Rectangle"
+            }
+        },
+        {
+            "To": {
+                "Id": 26,
+                "ParameterName": "A"
+            },
+            "From": {
+                "Id": 25,
+                "ParameterName": "Array"
+            }
+        },
+        {
+            "To": {
+                "Id": 26,
+                "ParameterName": "B"
+            },
+            "From": {
+                "Id": 21,
+                "ParameterName": "Geometry"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Angle"
+            },
+            "From": {
+                "Id": 27,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+// Example 10: Component Selection and Editing
+User: [Selects a component] Change this to a hexagon
+AI: I'll replace the selected rectangle (component 1) with a hexagon.
+// JSON:
+{
+    "Advice": "The rectangle will be replaced with a hexagon",
+    "Additions": [
+        {
+            "Name": "Polygon",
+            "Id": 28
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 29,
+            "value": "6"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 28,
+                "ParameterName": "Sides"
+            },
+            "From": {
+                "Id": 29,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 16,
+                "ParameterName": "Base"
+            },
+            "From": {
+                "Id": 28,
+                "ParameterName": "Polygon"
+            }
+        }
+    ],
+    "Removals": [
+        {
+            "Id": 13,
+            "Type": "Rectangle"
+        }
+    ]
+} 

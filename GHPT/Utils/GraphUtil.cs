@@ -78,11 +78,11 @@ namespace GHPT.Utils
         {
             try
             {
-                LogToFile($"Attempting to connect components: {pairing.From.Id} -> {pairing.To.Id}");
-                LogToFile($"Connection details - From: {pairing.From.ParameterName}, To: {pairing.To.ParameterName}");
+                LogToFile($"Attempting to connect components: {pairing.FromComponentId} -> {pairing.ToComponentId}");
+                LogToFile($"Connection details - From: {pairing.FromParameter}, To: {pairing.ToParameter}");
                 
-                CreatedComponents.TryGetValue(pairing.From.Id, out IGH_DocumentObject componentFrom);
-                CreatedComponents.TryGetValue(pairing.To.Id, out IGH_DocumentObject componentTo);
+                CreatedComponents.TryGetValue(pairing.FromComponentId, out IGH_DocumentObject componentFrom);
+                CreatedComponents.TryGetValue(pairing.ToComponentId, out IGH_DocumentObject componentTo);
 
                 if (componentFrom == null || componentTo == null)
                 {
@@ -92,8 +92,8 @@ namespace GHPT.Utils
 
                 LogToFile($"Found components: From={componentFrom.GetType().Name}, To={componentTo.GetType().Name}");
 
-                IGH_Param fromParam = GetParam(componentFrom, pairing.From, false);
-                IGH_Param toParam = GetParam(componentTo, pairing.To, true);
+                IGH_Param fromParam = GetParam(componentFrom, pairing.FromParameter, false);
+                IGH_Param toParam = GetParam(componentTo, pairing.ToParameter, true);
 
                 if (fromParam is null || toParam is null)
                 {
@@ -125,19 +125,19 @@ namespace GHPT.Utils
             }
         }
 
-        private static IGH_Param GetParam(IGH_DocumentObject docObj, Connection connection, bool isInput)
+        private static IGH_Param GetParam(IGH_DocumentObject docObj, string parameterName, bool isInput)
         {
             var resultParam = docObj switch
             {
                 IGH_Param param => param,
-                IGH_Component component => GetComponentParam(component, connection, isInput),
+                IGH_Component component => GetComponentParam(component, parameterName, isInput),
                 _ => null
             };
 
             return resultParam;
         }
 
-        private static IGH_Param GetComponentParam(IGH_Component component, Connection connection, bool isInput)
+        private static IGH_Param GetComponentParam(IGH_Component component, string parameterName, bool isInput)
         {
             IList<IGH_Param> _params = (isInput ? component.Params.Input : component.Params.Output)?.ToArray();
 
@@ -148,7 +148,7 @@ namespace GHPT.Utils
             }
 
             LogToFile($"Available parameters for {component.GetType().Name}: {string.Join(", ", _params.Select(p => p.Name))}");
-            LogToFile($"Looking for parameter: {connection.ParameterName}");
+            LogToFile($"Looking for parameter: {parameterName}");
 
             if (_params.Count() <= 1)
             {
@@ -160,7 +160,7 @@ namespace GHPT.Utils
             // First try exact match (case insensitive)
             foreach (var _param in _params)
             {
-                if (_param.Name.ToLowerInvariant() == connection.ParameterName.ToLowerInvariant())
+                if (_param.Name.ToLowerInvariant() == parameterName.ToLowerInvariant())
                 {
                     LogToFile($"Found exact parameter match: {_param.Name}");
                     return _param;
@@ -170,8 +170,8 @@ namespace GHPT.Utils
             // Then try partial match
             foreach (var _param in _params)
             {
-                if (_param.Name.ToLowerInvariant().Contains(connection.ParameterName.ToLowerInvariant()) ||
-                    connection.ParameterName.ToLowerInvariant().Contains(_param.Name.ToLowerInvariant()))
+                if (_param.Name.ToLowerInvariant().Contains(parameterName.ToLowerInvariant()) ||
+                    parameterName.ToLowerInvariant().Contains(_param.Name.ToLowerInvariant()))
                 {
                     LogToFile($"Found partial parameter match: {_param.Name}");
                     return _param;
@@ -195,18 +195,18 @@ namespace GHPT.Utils
             foreach (var _param in _params)
             {
                 var paramName = _param.Name.ToLowerInvariant();
-                var targetName = connection.ParameterName.ToLowerInvariant();
+                var targetName = parameterName.ToLowerInvariant();
 
                 if (commonMappings.TryGetValue(targetName, out string mappedName) && 
                     paramName.Contains(mappedName))
                 {
-                    LogToFile($"Found mapped parameter match: {_param.Name}");
+                    LogToFile($"Found parameter match through common mapping: {_param.Name}");
                     return _param;
                 }
             }
 
-            LogToFile($"No parameter match found for: {connection.ParameterName}");
-            return null;
+            LogToFile($"No matching parameter found for: {parameterName}");
+            return _params.FirstOrDefault();
         }
 
         private static IGH_ObjectProxy GetObject(string name)

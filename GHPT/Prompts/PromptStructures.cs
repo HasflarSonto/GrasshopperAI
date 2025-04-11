@@ -31,13 +31,13 @@ namespace GHPT.Prompts
         {
             try
             {
-                List<ConnectionPairing> pairings = Connections.Where(c => c.To.Id == child.Id).ToList();
+                List<ConnectionPairing> pairings = Connections.Where(c => c.ToComponentId == child.Id).ToList();
                 List<int> depths = new();
                 foreach (ConnectionPairing pairing in pairings)
                 {
                     if (pairing.IsValid())
                     {
-                        Addition parent = Additions.FirstOrDefault(a => pairing.From.Id == a.Id);
+                        Addition parent = Additions.FirstOrDefault(a => a.Id == pairing.FromComponentId);
                         int maxDepth = FindParentsRecursive(parent, depth + 1);
                         depths.Add(maxDepth);
                     }
@@ -64,12 +64,14 @@ namespace GHPT.Prompts
 
     public struct ConnectionPairing
     {
-        public Connection To { get; set; }
-        public Connection From { get; set; }
+        public int FromComponentId { get; set; }
+        public string FromParameter { get; set; }
+        public int ToComponentId { get; set; }
+        public string ToParameter { get; set; }
 
         public bool IsValid()
         {
-            return To.IsValid() && From.IsValid();
+            return !string.IsNullOrEmpty(FromParameter) && !string.IsNullOrEmpty(ToParameter);
         }
     }
 

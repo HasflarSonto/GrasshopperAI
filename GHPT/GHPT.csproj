@@ -8,6 +8,7 @@
     <TargetExt>.gha</TargetExt>
     <LangVersion>11</LangVersion>
 	<Nullable>annotations</Nullable>
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
 	
   <ItemGroup>
@@ -28,9 +29,12 @@
     <PackageReference Include="Grasshopper" Version="8.6.24101.5001" IncludeAssets="compile;build" />
     <PackageReference Include="RhinoCommon" Version="8.6.24101.5001" IncludeAssets="compile;build" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Resources.Extensions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="System.Text.Json" Version="7.0.0">
       <Private>True</Private>
       <CopyLocal>True</CopyLocal>
+      <IncludeAssets>all</IncludeAssets>
     </PackageReference>
   </ItemGroup>
   
@@ -77,5 +81,6 @@
     <StartArguments></StartArguments>
     <StartAction>Program</StartAction>
   </PropertyGroup>
+
 
 </Project>

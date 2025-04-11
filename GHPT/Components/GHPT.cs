@@ -41,7 +41,7 @@ public class GHPT : GH_Component, IGH_InitCodeAware
 		public GHPT()
 		  : base("GHPT", "GHPT",
 			"A component that lets you use ChatGPT to instantiate Grasshopper snippets from a prompt",
-			"Extra", "GHPT")
+			"GHPT", "Core")
 		{
 			Ready += OnReady;
 			_queue = new Queue();

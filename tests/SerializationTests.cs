@@ -33,40 +33,26 @@ namespace UnitTests
                 {
                     new ConnectionPairing()
                     {
-                        To = new Connection()
-                        {
-                            Id = 1,
-                            ParameterName = "number"
-                        },
-                        From = new Connection()
-                        {
-                            Id = 3,
-                            ParameterName = "A"
-                        },
+                        FromComponentId = 3,
+                        FromParameter = "A",
+                        ToComponentId = 1,
+                        ToParameter = "number"
                     },
                     new ConnectionPairing()
                     {
-                        To = new Connection()
-                        {
-                            Id = 2,
-                            ParameterName = "number"
-                        },
-                        From = new Connection()
-                        {
-                            Id = 3,
-                            ParameterName = "B"
-                        },
-                    },
+                        FromComponentId = 3,
+                        FromParameter = "B",
+                        ToComponentId = 2,
+                        ToParameter = "number"
+                    }
                 };
 
-            var promptData = new PromptData()
+            return new PromptData()
             {
-                Advice = "Don't eat yellow snow",
                 Additions = additions,
-                Connections = connections
+                Connections = connections,
+                Advice = "Test prompt"
             };
-
-            return promptData;
         }
 
         [Test]
