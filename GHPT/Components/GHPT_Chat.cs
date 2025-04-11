@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Attributes;
 using Grasshopper.Kernel.Parameters;
@@ -12,18 +13,26 @@ using Grasshopper.GUI.Canvas;
 using GHPT.Prompts;
 using GHPT.Utils;
 using GHPT.IO;
+using GHPT.UI;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
+using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel;
 
 namespace GHPT.Components
 {
     public class GHPT_Chat : GH_Component
     {
         private ChatPromptBuilder _promptBuilder;
-        private List<ChatMessage> _chatHistory;
+        internal List<ChatMessage> _chatHistory;
         private const int MAX_HISTORY_LENGTH = 50;
+        private const int BUTTON_WIDTH = 80;
         private GPTConfig _currentConfig;
+        internal string _currentInput = "";
+        internal bool _isTyping = false;
+        internal bool _isHoveringButton = false;
         public List<GH_Attributes<IGH_Param>> MessageHandlers { get; private set; }
+        internal GH_Panel InputPanel { get; private set; }
 
         public GHPT_Chat()
           : base("GHPT Chat", "GHPT Chat",
@@ -34,12 +43,57 @@ namespace GHPT.Components
             _chatHistory = new List<ChatMessage>();
             _currentConfig = ConfigUtil.Configs.FirstOrDefault();
             MessageHandlers = new List<GH_Attributes<IGH_Param>>();
+            
+            // Initialize the input panel
+            InputPanel = new GH_Panel();
+            InputPanel.NickName = "Input";
+            InputPanel.Description = "Type your message here";
+            InputPanel.CreateAttributes();
+            
+            // Set panel properties
+            var props = InputPanel.Properties;
+            props.Multiline = true;
+            props.Wrap = false; // Don't wrap text
+            props.Alignment = GH_Panel.Alignment.Left; // Left align text
+        }
+
+        public override void AddedToDocument(GH_Document document)
+        {
+            base.AddedToDocument(document);
+            Instances.DocumentEditor.KeyPress += DocumentEditor_KeyPress;
+            
+            // Add the input panel to the document
+            if (InputPanel != null)
+            {
+                document.AddObject(InputPanel, false);
+                UpdateInputPanelPosition();
+            }
+        }
+
+        public override void RemovedFromDocument(GH_Document document)
+        {
+            base.RemovedFromDocument(document);
+            Instances.DocumentEditor.KeyPress -= DocumentEditor_KeyPress;
+            
+            // Remove the input panel from the document
+            if (InputPanel != null)
+            {
+                document.RemoveObject(InputPanel, false);
+            }
+        }
+
+        private void DocumentEditor_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (_isTyping && !char.IsControl(e.KeyChar))
+            {
+                _currentInput += e.KeyChar;
+                Instances.ActiveCanvas.Refresh();
+            }
         }
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Message", "M", "User message", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Send", "S", "Send message", GH_ParamAccess.item);
+            // No input parameters needed anymore
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -183,7 +237,7 @@ namespace GHPT.Components
 
         public override void CreateAttributes()
         {
-            m_attributes = (IGH_Attributes)new GHPT_ChatAttributes(this);
+            m_attributes = new GHPT_ChatAttributes(this);
         }
 
         protected override Bitmap Icon => null;
@@ -191,14 +245,87 @@ namespace GHPT.Components
         public override GH_Exposure Exposure => GH_Exposure.primary;
 
         public override Guid ComponentGuid => new Guid("f1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d");
+
+        internal async void SendMessage(string message)
+        {
+            try
+            {
+                // Add user message to history
+                _promptBuilder.AddMessage("user", message);
+                _chatHistory.Add(new ChatMessage
+                {
+                    Role = "user",
+                    Content = message,
+                    Timestamp = DateTime.Now
+                });
+
+                // Get current Grasshopper state
+                var currentState = GetCurrentGrasshopperState();
+
+                // Build prompt
+                string prompt = BuildPrompt(message, currentState);
+                
+                // Process prompt and get response
+                var response = await ProcessPrompt(prompt);
+                
+                // Parse JSON response
+                var jsonResponse = JsonConvert.DeserializeObject<dynamic>(response);
+                
+                // Add AI response to history
+                _promptBuilder.AddMessage("assistant", response);
+                _chatHistory.Add(new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = jsonResponse.Advice.ToString(),
+                    Timestamp = DateTime.Now
+                });
+
+                // Output results
+                var doc = OnPingDocument();
+                if (doc != null)
+                {
+                    doc.ScheduleSolution(5, d =>
+                    {
+                        this.ExpireSolution(true);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Error processing message: {ex.Message}");
+            }
+        }
+
+        internal void UpdateInputPanelPosition()
+        {
+            if (InputPanel == null) return;
+            
+            // Position the panel relative to the component
+            var bounds = this.Attributes.Bounds;
+            var panelBounds = new RectangleF(
+                bounds.X + 5,
+                bounds.Bottom - 125,  // Move up slightly to accommodate taller height
+                bounds.Width - GHPT_ChatAttributes.BUTTON_WIDTH - 15, // Use the constant from GHPT_ChatAttributes
+                120 // Increased height for input
+            );
+            
+            InputPanel.Attributes.Bounds = panelBounds;
+            InputPanel.Attributes.Pivot = new PointF(panelBounds.X, panelBounds.Y);
+            InputPanel.Attributes.ExpireLayout();
+        }
     }
 
     public class GHPT_ChatAttributes : GH_ComponentAttributes
     {
+        // Constants for layout
         private const int PADDING = 5;
-        private const int INPUT_HEIGHT = 30;
-        private const int BUTTON_WIDTH = 80;
-        private const int CHAT_HEIGHT = 200;
+        private const int INPUT_HEIGHT = 120;  // Match the new panel height
+        internal const int BUTTON_WIDTH = 40;
+        private const int CHAT_HEIGHT = 300;
+
+        private RectangleF _inputBox;
+        private RectangleF _sendButton;
+        private RectangleF _chatDisplay;
 
         private GHPT_Chat ChatOwner => (GHPT_Chat)Owner;
 
@@ -214,81 +341,142 @@ namespace GHPT.Components
             Bounds = new RectangleF(
                 Bounds.X,
                 Bounds.Y,
-                400,
+                400, // Fixed width
                 CHAT_HEIGHT + INPUT_HEIGHT + (PADDING * 3));
 
-            // Layout input controls
-            var inputBox = new RectangleF(
-                Bounds.X + PADDING,
-                Bounds.Y + CHAT_HEIGHT + PADDING,
-                Bounds.Width - BUTTON_WIDTH - (PADDING * 3),
-                INPUT_HEIGHT);
-
-            var sendButton = new RectangleF(
-                inputBox.Right + PADDING,
-                inputBox.Y,
-                BUTTON_WIDTH,
-                INPUT_HEIGHT);
-
             // Layout chat display
-            var chatDisplay = new RectangleF(
+            _chatDisplay = new RectangleF(
                 Bounds.X + PADDING,
                 Bounds.Y + PADDING,
                 Bounds.Width - (PADDING * 2),
                 CHAT_HEIGHT);
 
-            // Create controls if they don't exist
-            if (ChatOwner.MessageHandlers.Count == 0)
-            {
-                var inputHandler = new GH_TextBoxAttributes(
-                    Rectangle.Round(inputBox),
-                    "Type your message...");
-                var buttonHandler = new GH_ButtonAttributes(
-                    Rectangle.Round(sendButton),
-                    "Send");
-                var chatHandler = new GH_RichTextBoxAttributes(
-                    Rectangle.Round(chatDisplay));
+            // Position send button
+            _sendButton = new RectangleF(
+                Bounds.Right - BUTTON_WIDTH - PADDING,
+                Bounds.Bottom - INPUT_HEIGHT - PADDING,
+                BUTTON_WIDTH,
+                INPUT_HEIGHT);
 
-                ChatOwner.MessageHandlers.Add(inputHandler);
-                ChatOwner.MessageHandlers.Add(buttonHandler);
-                ChatOwner.MessageHandlers.Add(chatHandler);
-            }
-            else
+            // Update panel position
+            if (ChatOwner.InputPanel != null)
             {
-                // Update existing controls
-                var inputHandler = ChatOwner.MessageHandlers[0] as GH_TextBoxAttributes;
-                var buttonHandler = ChatOwner.MessageHandlers[1] as GH_ButtonAttributes;
-                var chatHandler = ChatOwner.MessageHandlers[2] as GH_RichTextBoxAttributes;
-
-                inputHandler.Bounds = Rectangle.Round(inputBox);
-                buttonHandler.Bounds = Rectangle.Round(sendButton);
-                chatHandler.Bounds = Rectangle.Round(chatDisplay);
+                ChatOwner.UpdateInputPanelPosition();
             }
+        }
+
+        public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                if (_sendButton.Contains(e.CanvasLocation))
+                {
+                    if (ChatOwner.InputPanel != null && !string.IsNullOrWhiteSpace(ChatOwner.InputPanel.UserText))
+                    {
+                        // Handle send button click
+                        string message = ChatOwner.InputPanel.UserText;
+                        ChatOwner.InputPanel.UserText = "";
+                        ChatOwner.SendMessage(message);
+                        sender.Refresh();
+                    }
+                    return GH_ObjectResponse.Handled;
+                }
+            }
+            return base.RespondToMouseDown(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToKeyDown(GH_Canvas sender, KeyEventArgs e)
+        {
+            if (ChatOwner._isTyping)
+            {
+                if (e.KeyCode == Keys.Enter && !e.Shift)
+                {
+                    if (!string.IsNullOrWhiteSpace(ChatOwner._currentInput))
+                    {
+                        string message = ChatOwner._currentInput;
+                        ChatOwner._currentInput = "";
+                        ChatOwner._isTyping = false;
+                        ChatOwner.SendMessage(message);
+                        sender.Refresh();
+                    }
+                    return GH_ObjectResponse.Handled;
+                }
+                else if (e.KeyCode == Keys.Back)
+                {
+                    if (ChatOwner._currentInput.Length > 0)
+                    {
+                        ChatOwner._currentInput = ChatOwner._currentInput.Substring(0, ChatOwner._currentInput.Length - 1);
+                        sender.Refresh();
+                    }
+                    return GH_ObjectResponse.Handled;
+                }
+            }
+            return base.RespondToKeyDown(sender, e);
         }
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
-            base.Render(canvas, graphics, channel);
-
             if (channel == GH_CanvasChannel.Objects)
             {
-                // Render chat history
-                var chatHandler = ChatOwner.MessageHandlers[2] as GH_RichTextBoxAttributes;
-                if (chatHandler != null)
+                // Draw component background
+                graphics.FillRectangle(new SolidBrush(Colours.Background), Bounds);
+                graphics.DrawRectangle(new Pen(Colours.Border), Rectangle.Round(Bounds));
+
+                // Draw chat display background
+                graphics.FillRectangle(new SolidBrush(Colours.Background), _chatDisplay);
+                graphics.DrawRectangle(new Pen(Colours.Border), Rectangle.Round(_chatDisplay));
+
+                // Draw chat history
+                var font = GH_FontServer.Standard;
+                var format = new StringFormat
                 {
-                    chatHandler.Render(canvas, graphics, channel);
+                    Alignment = StringAlignment.Near,
+                    LineAlignment = StringAlignment.Near,
+                    Trimming = StringTrimming.EllipsisCharacter
+                };
+
+                float y = _chatDisplay.Y + PADDING;
+                foreach (var message in ChatOwner._chatHistory.AsEnumerable().Reverse())
+                {
+                    string prefix = message.Role == "user" ? "You: " : "AI: ";
+                    string text = prefix + message.Content;
+                    
+                    SizeF size = graphics.MeasureString(text, font);
+                    if (y + size.Height > _chatDisplay.Bottom - PADDING)
+                        break;
+
+                    graphics.DrawString(text, font, new SolidBrush(Colours.Text), 
+                        new RectangleF(_chatDisplay.X + PADDING, y, _chatDisplay.Width - (PADDING * 2), size.Height), 
+                        format);
+                    
+                    y += size.Height + 5;
                 }
 
-                // Render input controls
-                var inputHandler = ChatOwner.MessageHandlers[0] as GH_TextBoxAttributes;
-                var buttonHandler = ChatOwner.MessageHandlers[1] as GH_ButtonAttributes;
-
-                if (inputHandler != null && buttonHandler != null)
-                {
-                    inputHandler.Render(canvas, graphics, channel);
-                    buttonHandler.Render(canvas, graphics, channel);
-                }
+                // Draw send button
+                var buttonBrush = ChatOwner._isHoveringButton ? new SolidBrush(Color.LightGray) : new SolidBrush(Color.White);
+                graphics.FillRectangle(buttonBrush, _sendButton);
+                graphics.DrawRectangle(new Pen(Color.Black), Rectangle.Round(_sendButton));
+                
+                var buttonText = "Send";
+                var buttonFont = GH_FontServer.Standard;
+                var buttonSize = graphics.MeasureString(buttonText, buttonFont);
+                var buttonPoint = new PointF(
+                    _sendButton.X + (_sendButton.Width - buttonSize.Width) / 2,
+                    _sendButton.Y + (_sendButton.Height - buttonSize.Height) / 2
+                );
+                graphics.DrawString(buttonText, buttonFont, Brushes.Black, buttonPoint);
             }
+        }
+
+        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            bool wasHovering = ChatOwner._isHoveringButton;
+            ChatOwner._isHoveringButton = _sendButton.Contains(e.CanvasLocation);
+            
+            if (wasHovering != ChatOwner._isHoveringButton)
+                sender.Refresh();
+
+            return base.RespondToMouseMove(sender, e);
         }
     }
 
