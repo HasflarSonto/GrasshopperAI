@@ -157,10 +157,13 @@ namespace GHPT.Components
 
         private string BuildPrompt(string message, GrasshopperState currentState)
         {
-            // Format prompt similar to prompt.txt
-            return $@"// Question: {message}
-// Reasoning: {GenerateReasoning(message, currentState)}
-// JSON: {JsonConvert.SerializeObject(currentState, Formatting.Indented)}";
+            // Use the Prompt class to get the base prompt
+            string prompt = Prompt.GetPrompt(message);
+            
+            // Add the current state as JSON
+            prompt += $"\n// JSON: {JsonConvert.SerializeObject(currentState, Formatting.Indented)}";
+            
+            return prompt;
         }
 
         private string GenerateReasoning(string message, GrasshopperState currentState)
@@ -268,26 +271,82 @@ namespace GHPT.Components
                 // Process prompt and get response
                 var response = await ProcessPrompt(prompt);
                 
-                // Parse JSON response
-                var jsonResponse = JsonConvert.DeserializeObject<dynamic>(response);
+                // Extract JSON from response
+                string chatGPTJson = PromptUtils.GetChatGPTJson(response);
+                
+                // Parse JSON into PromptData
+                var promptData = PromptUtils.GetPromptDataFromResponse(chatGPTJson);
                 
                 // Add AI response to history
-                _promptBuilder.AddMessage("assistant", response);
+                _promptBuilder.AddMessage("assistant", promptData.Advice);
                 _chatHistory.Add(new ChatMessage
                 {
                     Role = "assistant",
-                    Content = jsonResponse.Advice.ToString(),
+                    Content = promptData.Advice,
                     Timestamp = DateTime.Now
                 });
 
-                // Output results
-                var doc = OnPingDocument();
-                if (doc != null)
+                // Create components if any
+                if (promptData.Additions != null && promptData.Additions.Any())
                 {
-                    doc.ScheduleSolution(5, d =>
+                    var doc = OnPingDocument();
+                    if (doc != null)
                     {
-                        this.ExpireSolution(true);
-                    });
+                        // Compute tiers
+                        Dictionary<int, List<Addition>> buckets = new();
+
+                        foreach (Addition addition in promptData.Additions)
+                        {
+                            if (buckets.ContainsKey(addition.Tier))
+                            {
+                                buckets[addition.Tier].Add(addition);
+                            }
+                            else
+                            {
+                                buckets.Add(addition.Tier, new List<Addition>() { addition });
+                            }
+                        }
+
+                        foreach (int tier in buckets.Keys)
+                        {
+                            int xIncrement = 250;
+                            int yIncrement = 100;
+                            float x = this.Attributes.Pivot.X + 100 + (xIncrement * tier);
+                            float y = this.Attributes.Pivot.Y;
+
+                            foreach (Addition addition in buckets[tier])
+                            {
+                                GraphUtil.InstantiateComponent(doc, addition, new System.Drawing.PointF(x, y));
+                                y += yIncrement;
+                            }
+                        }
+
+                        // Connect components
+                        if (promptData.Connections != null)
+                        {
+                            foreach (ConnectionPairing connection in promptData.Connections)
+                            {
+                                GraphUtil.ConnectComponent(doc, connection);
+                            }
+                        }
+
+                        doc.ScheduleSolution(5, d =>
+                        {
+                            this.ExpireSolution(true);
+                        });
+                    }
+                }
+                else
+                {
+                    // If no components were created, still refresh the solution
+                    var doc = OnPingDocument();
+                    if (doc != null)
+                    {
+                        doc.ScheduleSolution(5, d =>
+                        {
+                            this.ExpireSolution(true);
+                        });
+                    }
                 }
             }
             catch (Exception ex)
@@ -322,10 +381,15 @@ namespace GHPT.Components
         private const int INPUT_HEIGHT = 120;  // Match the new panel height
         internal const int BUTTON_WIDTH = 40;
         private const int CHAT_HEIGHT = 300;
+        private const int SCROLLBAR_WIDTH = 10;
 
         private RectangleF _inputBox;
         private RectangleF _sendButton;
         private RectangleF _chatDisplay;
+        private RectangleF _scrollbar;
+        private float _scrollOffset = 0;  // Track scroll position
+        private float _maxScroll = 0;     // Maximum scroll value
+        private bool _isScrolling = false; // Track if we're currently scrolling
 
         private GHPT_Chat ChatOwner => (GHPT_Chat)Owner;
 
@@ -344,14 +408,21 @@ namespace GHPT.Components
                 400, // Fixed width
                 CHAT_HEIGHT + INPUT_HEIGHT + (PADDING * 3));
 
-            // Layout chat display
+            // Layout chat display - now extends to input area
             _chatDisplay = new RectangleF(
                 Bounds.X + PADDING,
                 Bounds.Y + PADDING,
-                Bounds.Width - (PADDING * 2),
-                CHAT_HEIGHT);
+                Bounds.Width - (PADDING * 2) - SCROLLBAR_WIDTH,
+                Bounds.Height - INPUT_HEIGHT - (PADDING * 3)); // Fill space to input
 
-            // Position send button
+            // Layout scrollbar
+            _scrollbar = new RectangleF(
+                _chatDisplay.Right + PADDING,
+                _chatDisplay.Y,
+                SCROLLBAR_WIDTH,
+                _chatDisplay.Height);
+
+            // Position send button at bottom
             _sendButton = new RectangleF(
                 Bounds.Right - BUTTON_WIDTH - PADDING,
                 Bounds.Bottom - INPUT_HEIGHT - PADDING,
@@ -373,7 +444,6 @@ namespace GHPT.Components
                 {
                     if (ChatOwner.InputPanel != null && !string.IsNullOrWhiteSpace(ChatOwner.InputPanel.UserText))
                     {
-                        // Handle send button click
                         string message = ChatOwner.InputPanel.UserText;
                         ChatOwner.InputPanel.UserText = "";
                         ChatOwner.SendMessage(message);
@@ -381,81 +451,147 @@ namespace GHPT.Components
                     }
                     return GH_ObjectResponse.Handled;
                 }
+                else if (_scrollbar.Contains(e.CanvasLocation))
+                {
+                    // Calculate scroll position based on click position
+                    float scrollRatio = (e.CanvasLocation.Y - _scrollbar.Y) / _scrollbar.Height;
+                    _scrollOffset = Math.Max(0, Math.Min(_maxScroll, scrollRatio * _maxScroll));
+                    sender.Refresh();
+                    return GH_ObjectResponse.Handled;
+                }
             }
             return base.RespondToMouseDown(sender, e);
         }
 
-        public override GH_ObjectResponse RespondToKeyDown(GH_Canvas sender, KeyEventArgs e)
+        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-            if (ChatOwner._isTyping)
+            bool wasHovering = ChatOwner._isHoveringButton;
+            ChatOwner._isHoveringButton = _sendButton.Contains(e.CanvasLocation);
+            
+            if (e.Button == System.Windows.Forms.MouseButtons.Left && _scrollbar.Contains(e.CanvasLocation))
             {
-                if (e.KeyCode == Keys.Enter && !e.Shift)
-                {
-                    if (!string.IsNullOrWhiteSpace(ChatOwner._currentInput))
-                    {
-                        string message = ChatOwner._currentInput;
-                        ChatOwner._currentInput = "";
-                        ChatOwner._isTyping = false;
-                        ChatOwner.SendMessage(message);
-                        sender.Refresh();
-                    }
-                    return GH_ObjectResponse.Handled;
-                }
-                else if (e.KeyCode == Keys.Back)
-                {
-                    if (ChatOwner._currentInput.Length > 0)
-                    {
-                        ChatOwner._currentInput = ChatOwner._currentInput.Substring(0, ChatOwner._currentInput.Length - 1);
-                        sender.Refresh();
-                    }
-                    return GH_ObjectResponse.Handled;
-                }
+                // Calculate scroll position based on mouse Y position
+                float scrollRatio = (e.CanvasLocation.Y - _scrollbar.Y) / _scrollbar.Height;
+                _scrollOffset = Math.Max(0, Math.Min(_maxScroll, scrollRatio * _maxScroll));
+                sender.Refresh();
+                return GH_ObjectResponse.Handled;
             }
-            return base.RespondToKeyDown(sender, e);
+            
+            if (wasHovering != ChatOwner._isHoveringButton)
+                sender.Refresh();
+
+            return base.RespondToMouseMove(sender, e);
+        }
+
+        public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            return base.RespondToMouseUp(sender, e);
         }
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
             if (channel == GH_CanvasChannel.Objects)
             {
-                // Draw component background
-                graphics.FillRectangle(new SolidBrush(Colours.Background), Bounds);
-                graphics.DrawRectangle(new Pen(Colours.Border), Rectangle.Round(Bounds));
+                // Draw component background - darker shade
+                var darkBackground = Color.FromArgb(45, 45, 48);
+                graphics.FillRectangle(new SolidBrush(darkBackground), Bounds);
+                graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 65)), Rectangle.Round(Bounds));
 
                 // Draw chat display background
-                graphics.FillRectangle(new SolidBrush(Colours.Background), _chatDisplay);
-                graphics.DrawRectangle(new Pen(Colours.Border), Rectangle.Round(_chatDisplay));
+                graphics.FillRectangle(new SolidBrush(darkBackground), _chatDisplay);
+                graphics.DrawRectangle(new Pen(Color.FromArgb(60, 60, 65)), Rectangle.Round(_chatDisplay));
 
-                // Draw chat history
+                // Draw scrollbar background
+                graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 65)), _scrollbar);
+                graphics.DrawRectangle(new Pen(Color.FromArgb(80, 80, 85)), Rectangle.Round(_scrollbar));
+
+                // Draw scrollbar thumb
+                if (_maxScroll > 0)
+                {
+                    float thumbHeight = Math.Max(20, _chatDisplay.Height * (_chatDisplay.Height / (_maxScroll + _chatDisplay.Height)));
+                    float thumbY = _scrollbar.Y + (_scrollbar.Height - thumbHeight) * (_scrollOffset / _maxScroll);
+                    var thumbRect = new RectangleF(_scrollbar.X, thumbY, _scrollbar.Width, thumbHeight);
+                    graphics.FillRectangle(new SolidBrush(Color.FromArgb(80, 80, 85)), thumbRect);
+                }
+
+                // Set up text format
                 var font = GH_FontServer.Standard;
                 var format = new StringFormat
                 {
                     Alignment = StringAlignment.Near,
                     LineAlignment = StringAlignment.Near,
-                    Trimming = StringTrimming.EllipsisCharacter
+                    Trimming = StringTrimming.None,
+                    FormatFlags = StringFormatFlags.NoClip | StringFormatFlags.LineLimit
                 };
 
-                float y = _chatDisplay.Y + PADDING;
-                foreach (var message in ChatOwner._chatHistory.AsEnumerable().Reverse())
+                // Calculate available width for text
+                float availableWidth = _chatDisplay.Width - (PADDING * 2);
+
+                // First measure all messages to get their heights
+                var messageHeights = new List<(float Height, bool IsUser)>();
+                float totalHeight = 0;
+                foreach (var message in ChatOwner._chatHistory)
                 {
                     string prefix = message.Role == "user" ? "You: " : "AI: ";
                     string text = prefix + message.Content;
                     
-                    SizeF size = graphics.MeasureString(text, font);
-                    if (y + size.Height > _chatDisplay.Bottom - PADDING)
-                        break;
-
-                    graphics.DrawString(text, font, new SolidBrush(Colours.Text), 
-                        new RectangleF(_chatDisplay.X + PADDING, y, _chatDisplay.Width - (PADDING * 2), size.Height), 
-                        format);
-                    
-                    y += size.Height + 5;
+                    var size = graphics.MeasureString(text, font, (int)availableWidth, format);
+                    messageHeights.Add((size.Height + 8, message.Role == "user")); // Increased padding
+                    totalHeight += size.Height + 8;
                 }
 
+                // Update max scroll value
+                _maxScroll = Math.Max(0, totalHeight - _chatDisplay.Height);
+
+                // Calculate starting Y position with scroll offset
+                float y = _chatDisplay.Bottom - totalHeight + _scrollOffset;
+                if (y > _chatDisplay.Y)
+                    y = _chatDisplay.Y + PADDING;
+
+                // Create clipping region for chat display
+                graphics.SetClip(_chatDisplay);
+
+                // Draw messages
+                for (int i = 0; i < ChatOwner._chatHistory.Count; i++)
+                {
+                    var message = ChatOwner._chatHistory[i];
+                    var (height, isUser) = messageHeights[i];
+                    
+                    if (y + height > _chatDisplay.Y && y < _chatDisplay.Bottom)
+                    {
+                        // Draw message background for user messages - darker shade
+                        if (isUser)
+                        {
+                            var msgBounds = new RectangleF(
+                                _chatDisplay.X + PADDING,
+                                y,
+                                availableWidth,
+                                height - 5
+                            );
+                            graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 65)), msgBounds);
+                        }
+
+                        string prefix = message.Role == "user" ? "You: " : "AI: ";
+                        string text = prefix + message.Content;
+                        
+                        // Draw the text in light color for better contrast
+                        graphics.DrawString(text, font, new SolidBrush(Color.FromArgb(230, 230, 230)),
+                            new RectangleF(_chatDisplay.X + PADDING, y, availableWidth, height - 5),
+                            format);
+                    }
+                    
+                    y += height;
+                }
+
+                // Reset clipping
+                graphics.ResetClip();
+
                 // Draw send button
-                var buttonBrush = ChatOwner._isHoveringButton ? new SolidBrush(Color.LightGray) : new SolidBrush(Color.White);
+                var buttonBrush = ChatOwner._isHoveringButton ? 
+                    new SolidBrush(Color.FromArgb(70, 70, 75)) : 
+                    new SolidBrush(Color.FromArgb(60, 60, 65));
                 graphics.FillRectangle(buttonBrush, _sendButton);
-                graphics.DrawRectangle(new Pen(Color.Black), Rectangle.Round(_sendButton));
+                graphics.DrawRectangle(new Pen(Color.FromArgb(80, 80, 85)), Rectangle.Round(_sendButton));
                 
                 var buttonText = "Send";
                 var buttonFont = GH_FontServer.Standard;
@@ -464,19 +600,8 @@ namespace GHPT.Components
                     _sendButton.X + (_sendButton.Width - buttonSize.Width) / 2,
                     _sendButton.Y + (_sendButton.Height - buttonSize.Height) / 2
                 );
-                graphics.DrawString(buttonText, buttonFont, Brushes.Black, buttonPoint);
+                graphics.DrawString(buttonText, buttonFont, new SolidBrush(Color.FromArgb(230, 230, 230)), buttonPoint);
             }
-        }
-
-        public override GH_ObjectResponse RespondToMouseMove(GH_Canvas sender, GH_CanvasMouseEvent e)
-        {
-            bool wasHovering = ChatOwner._isHoveringButton;
-            ChatOwner._isHoveringButton = _sendButton.Contains(e.CanvasLocation);
-            
-            if (wasHovering != ChatOwner._isHoveringButton)
-                sender.Refresh();
-
-            return base.RespondToMouseMove(sender, e);
         }
     }
 

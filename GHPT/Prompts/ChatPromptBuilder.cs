@@ -33,6 +33,12 @@ namespace GHPT.Prompts
             prompt.AppendLine("3. Understand references to previous components and actions");
             prompt.AppendLine("4. Maintain context about the user's design intent");
             prompt.AppendLine("5. Be concise but helpful in your responses");
+            prompt.AppendLine("6. ALWAYS format your response in the following JSON structure:");
+            prompt.AppendLine("   {\n     \"Advice\": \"Your advice to the user\",\n     \"Additions\": [\n       {\n         \"Name\": \"ComponentName\",\n         \"Id\": uniqueNumber,\n         \"value\": \"optionalValue\"\n       }\n     ],\n     \"Connections\": [\n       {\n         \"To\": {\n           \"Id\": componentId,\n           \"ParameterName\": \"parameterName\"\n         },\n         \"From\": {\n           \"Id\": componentId,\n           \"ParameterName\": \"parameterName\"\n         }\n       }\n     ]\n   }");
+            prompt.AppendLine("7. NEVER deviate from this JSON format");
+            prompt.AppendLine("8. ALWAYS include an Advice field with helpful instructions");
+            prompt.AppendLine("9. ALWAYS include Additions for any new components needed");
+            prompt.AppendLine("10. ALWAYS include Connections for any component relationships");
             
             // Current state
             prompt.AppendLine("\nCurrent Grasshopper Definition State:");
@@ -51,7 +57,7 @@ namespace GHPT.Prompts
             prompt.AppendLine("1. Understand the request in context of previous conversation");
             prompt.AppendLine("2. Reference any relevant previous components or actions");
             prompt.AppendLine("3. Plan the necessary Grasshopper operations");
-            prompt.AppendLine("4. Provide a clear, concise response");
+            prompt.AppendLine("4. Provide a clear, concise response in the exact JSON format specified above");
             prompt.AppendLine("5. Update your internal state for future reference");
             
             // Examples

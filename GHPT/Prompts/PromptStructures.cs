@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace GHPT.Prompts
 {
@@ -12,23 +13,31 @@ namespace GHPT.Prompts
 
         public void ComputeTiers()
         {
-            List<Addition> additions = this.Additions.ToList();
-            if (additions == null)
+            if (Additions == null)
+            {
+                Additions = new List<Addition>();
+                return;
+            }
+
+            List<Addition> additions = Additions.ToList();
+            if (additions.Count == 0)
                 return;
 
-            for (int i = 0; i < additions.Count(); i++)
+            for (int i = 0; i < additions.Count; i++)
             {
                 Addition addition = additions[i];
                 int tier = FindParentsRecursive(addition);
                 addition.Tier = tier;
-
                 additions[i] = addition;
             }
-            this.Additions = additions;
+            Additions = additions;
         }
 
         public int FindParentsRecursive(Addition child, int depth = 0)
         {
+            if (Connections == null)
+                return depth;
+
             try
             {
                 List<ConnectionPairing> pairings = Connections.Where(c => c.ToComponentId == child.Id).ToList();
@@ -38,8 +47,11 @@ namespace GHPT.Prompts
                     if (pairing.IsValid())
                     {
                         Addition parent = Additions.FirstOrDefault(a => a.Id == pairing.FromComponentId);
-                        int maxDepth = FindParentsRecursive(parent, depth + 1);
-                        depths.Add(maxDepth);
+                        if (parent.Id != 0) // Check if parent was found
+                        {
+                            int maxDepth = FindParentsRecursive(parent, depth + 1);
+                            depths.Add(maxDepth);
+                        }
                     }
                 }
 
@@ -58,27 +70,32 @@ namespace GHPT.Prompts
     {
         public string Name { get; set; }
         public int Id { get; set; }
+        [JsonProperty("value")]
         public string? Value { get; set; }
         public int Tier { get; set; }
     }
 
     public struct ConnectionPairing
     {
-        public int FromComponentId { get; set; }
-        public string FromParameter { get; set; }
-        public int ToComponentId { get; set; }
-        public string ToParameter { get; set; }
+        [JsonProperty("From")]
+        public Connection From { get; set; }
+        [JsonProperty("To")]
+        public Connection To { get; set; }
+
+        public int FromComponentId { get => From.Id; set => From = new Connection { Id = value, ParameterName = From.ParameterName }; }
+        public string FromParameter { get => From.ParameterName; set => From = new Connection { Id = From.Id, ParameterName = value }; }
+        public int ToComponentId { get => To.Id; set => To = new Connection { Id = value, ParameterName = To.ParameterName }; }
+        public string ToParameter { get => To.ParameterName; set => To = new Connection { Id = To.Id, ParameterName = value }; }
 
         public bool IsValid()
         {
-            return !string.IsNullOrEmpty(FromParameter) && !string.IsNullOrEmpty(ToParameter);
+            return From.IsValid() && To.IsValid();
         }
     }
 
     public struct Connection
     {
-        private int _id;
-        public int Id { get { return _id == default ? -1 : _id; } set { _id = value; } }
+        public int Id { get; set; }
         public string ParameterName { get; set; }
 
         public bool IsValid()
