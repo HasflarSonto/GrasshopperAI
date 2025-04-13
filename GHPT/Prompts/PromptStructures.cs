@@ -4,8 +4,7 @@ using Newtonsoft.Json;
 
 namespace GHPT.Prompts
 {
-
-    public struct PromptData
+    public class PromptData
     {
         public string Advice { get; set; }
         public IEnumerable<Addition> Additions { get; set; }
@@ -103,6 +102,4 @@ namespace GHPT.Prompts
             return Id > 0 && !string.IsNullOrEmpty(ParameterName);
         }
     }
-
-
 }

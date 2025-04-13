@@ -1,0 +1,100 @@
+# Grasshopper Component Best Practices
+
+## Component Naming Conventions
+1. Use exact component names as they appear in Grasshopper
+2. Common component aliases:
+   - "Circle" -> "Circle CNR"
+   - "Extrusion" -> "Extrude"
+   - "Text Panel" -> "Panel"
+   - "Number" -> "Number Slider"
+   - "Slider" -> "Number Slider"
+
+## Parameter Formatting Rules
+1. Point values must be formatted as "{x,y,z}"
+2. Number Slider ranges must be formatted as "min..value..max"
+3. Series values must be formatted as "start..step..end"
+4. Boolean values must be "true" or "false"
+5. Text values must be enclosed in quotes
+
+## Connection Validation Rules
+1. Input/Output Type Compatibility:
+   - Number -> Number
+   - Point -> Point
+   - Curve -> Curve
+   - Surface -> Surface
+   - Boolean -> Boolean
+   - Text -> Text
+
+2. Common Parameter Names:
+   - Input: "input", "geometry", "curve", "point", "number", "value"
+   - Output: "output", "result", "geometry", "curve", "point", "number"
+
+3. Required Parameters:
+   - Circle CNR: Center, Normal, Radius
+   - Extrude: Base, Direction
+   - Loft: Curves
+   - Construct Point: Point
+   - Line: Start Point, End Point
+
+## Error Handling Guidelines
+1. Component Validation:
+   - Verify component exists in Grasshopper
+   - Check all required parameters are provided
+   - Ensure parameter types match expected values
+
+2. Connection Validation:
+   - Check for circular dependencies
+   - Verify input/output type compatibility
+   - Ensure all required inputs are connected
+   - Validate number of inputs/outputs
+
+3. Parameter Validation:
+   - Verify numeric ranges are valid
+   - Check point coordinates are valid
+   - Ensure text values are properly formatted
+   - Validate boolean values
+
+## Common Patterns
+1. Data Flow:
+   - Source -> Transform -> Output
+   - Input -> Process -> Result
+   - Geometry -> Operation -> Geometry
+
+2. Component Grouping:
+   - Input components first
+   - Processing components second
+   - Output components last
+
+3. Parameter Organization:
+   - Required parameters first
+   - Optional parameters second
+   - Default values when appropriate
+
+## Example Patterns
+1. Grid Creation:
+   - Series -> Cross Reference -> Construct Point
+   - Number Slider -> Series -> Cross Reference
+
+2. Surface Creation:
+   - Curve -> Loft -> Surface
+   - Point -> Curve -> Surface
+
+3. Transformation:
+   - Geometry -> Transform -> Result
+   - Input -> Operation -> Output
+
+## Common Pitfalls
+1. Missing Required Parameters:
+   - Circle without Center or Normal
+   - Extrude without Direction
+   - Loft without Curves
+
+2. Type Mismatches:
+   - Number connected to Point
+   - Curve connected to Surface
+   - Text connected to Number
+
+3. Invalid Connections:
+   - Circular dependencies
+   - Missing required inputs
+   - Incorrect parameter types 

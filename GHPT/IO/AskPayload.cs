@@ -15,7 +15,7 @@ namespace GHPT.IO
 
         public AskPayload()
         {
-
+            Messages = new List<Message>();
         }
 
         public AskPayload(string model, List<Message> messages, double temperature = 0.7)
@@ -37,6 +37,16 @@ namespace GHPT.IO
             this.Model = model;
             this.Messages = new List<Message> { new Message(msg) };
             this.Temperature = temperature;
+        }
+
+        public void AddSystemMessage(string content)
+        {
+            Messages.Add(new Message(content, "system"));
+        }
+
+        public void AddUserMessage(string content)
+        {
+            Messages.Add(new Message(content, "user"));
         }
     }
 }

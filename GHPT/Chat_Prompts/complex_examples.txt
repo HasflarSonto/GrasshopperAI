@@ -1,0 +1,283 @@
+# Complex Chat Examples
+
+## Multiple Component Operations
+
+### [SUCCESS] Create a Grid of Points
+[COMPLEXITY: HIGH]
+[CATEGORY: ARRAY]
+[COMPONENTS: Construct Point, Series, Series, Cross Reference]
+[PARAMETERS: CountX=5, CountY=5, Spacing=1]
+
+User: Create a 5x5 grid of points with 1 unit spacing
+Assistant: {
+    "Advice": "Created a 5x5 grid of points",
+    "Additions": [
+        {
+            "Name": "Construct Point",
+            "Id": 1
+        },
+        {
+            "Name": "Series",
+            "Id": 2,
+            "value": "0..1..5"
+        },
+        {
+            "Name": "Series",
+            "Id": 3,
+            "value": "0..1..5"
+        },
+        {
+            "Name": "Cross Reference",
+            "Id": 4
+        }
+    ],
+    "Connections": [
+        {
+            "From": {
+                "Id": 2,
+                "ParameterName": "Series"
+            },
+            "To": {
+                "Id": 4,
+                "ParameterName": "A"
+            }
+        },
+        {
+            "From": {
+                "Id": 3,
+                "ParameterName": "Series"
+            },
+            "To": {
+                "Id": 4,
+                "ParameterName": "B"
+            }
+        },
+        {
+            "From": {
+                "Id": 4,
+                "ParameterName": "Result"
+            },
+            "To": {
+                "Id": 1,
+                "ParameterName": "Point"
+            }
+        }
+    ]
+}
+
+### [SUCCESS] Create a Lofted Surface
+[COMPLEXITY: HIGH]
+[CATEGORY: SURFACE]
+[COMPONENTS: Circle CNR, Circle CNR, Loft, Number Slider]
+[PARAMETERS: Radius1=5, Radius2=8, Distance=20]
+
+User: Create a loft between two circles
+Assistant: {
+    "Advice": "Adjust the number sliders to control the circle sizes and positions",
+    "Additions": [
+        {
+            "Name": "Circle CNR",
+            "Id": 7
+        },
+        {
+            "Name": "Circle CNR",
+            "Id": 8
+        },
+        {
+            "Name": "Loft",
+            "Id": 9
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 10,
+            "value": "0..5..100"
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 11,
+            "value": "0..8..100"
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 12,
+            "value": "0..20..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 7,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 10,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 8,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 11,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 9,
+                "ParameterName": "Curves"
+            },
+            "From": {
+                "Id": 7,
+                "ParameterName": "Circle"
+            }
+        },
+        {
+            "To": {
+                "Id": 9,
+                "ParameterName": "Curves"
+            },
+            "From": {
+                "Id": 8,
+                "ParameterName": "Circle"
+            }
+        }
+    ]
+}
+
+### [SUCCESS] Create a Twisted Tower
+[COMPLEXITY: HIGH]
+[CATEGORY: COMPLEX]
+[COMPONENTS: Rectangle, Number Slider, Unit Z, Extrusion, Twist, Line, Point]
+[PARAMETERS: Height=250, Angle=90]
+
+User: Create a twisted tower
+Assistant: {
+    "Advice": "Adjust the number sliders to control the tower's dimensions and twist",
+    "Additions": [
+        {
+            "Name": "Rectangle",
+            "Id": 13
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 14,
+            "value": "0..50..100"
+        },
+        {
+            "Name": "Unit Z",
+            "Id": 15
+        },
+        {
+            "Name": "Extrusion",
+            "Id": 16
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 17,
+            "value": "0..90..360"
+        },
+        {
+            "Name": "Line",
+            "Id": 18
+        },
+        {
+            "Name": "Point",
+            "Id": 19,
+            "value": "{0,0,0}"
+        },
+        {
+            "Name": "Point",
+            "Id": 20,
+            "value": "{0,0,250}"
+        },
+        {
+            "Name": "Twist",
+            "Id": 21
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 16,
+                "ParameterName": "Base"
+            },
+            "From": {
+                "Id": 13,
+                "ParameterName": "Rectangle"
+            }
+        },
+        {
+            "To": {
+                "Id": 15,
+                "ParameterName": "Factor"
+            },
+            "From": {
+                "Id": 14,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Angle"
+            },
+            "From": {
+                "Id": 17,
+                "ParameterName": "Number"
+            }
+        },
+        {
+            "To": {
+                "Id": 16,
+                "ParameterName": "Direction"
+            },
+            "From": {
+                "Id": 15,
+                "ParameterName": "Unit vector"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Geometry"
+            },
+            "From": {
+                "Id": 16,
+                "ParameterName": "Extrusion"
+            }
+        },
+        {
+            "To": {
+                "Id": 18,
+                "ParameterName": "Start Point"
+            },
+            "From": {
+                "Id": 19,
+                "ParameterName": "Point"
+            }
+        },
+        {
+            "To": {
+                "Id": 18,
+                "ParameterName": "End Point"
+            },
+            "From": {
+                "Id": 20,
+                "ParameterName": "Point"
+            }
+        },
+        {
+            "To": {
+                "Id": 21,
+                "ParameterName": "Axis"
+            },
+            "From": {
+                "Id": 18,
+                "ParameterName": "Line"
+            }
+        }
+    ]
+} 

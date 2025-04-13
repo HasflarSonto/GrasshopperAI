@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Special;
 using System.Linq;
+using System.Text;
 
 namespace GHPT.Utils
 {
@@ -19,11 +20,18 @@ namespace GHPT.Utils
 				prompt,
 				temperature);
 
+			return await Ask(config, payload);
+		}
+
+		public static async Task<ResponsePayload> Ask(GPTConfig config, AskPayload payload)
+		{
+			var url = "https://api.openai.com/v1/chat/completions";
+
 			var client = new HttpClient();
 			client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.Token}");
 
 			var jsonPayload = JsonConvert.SerializeObject(payload);
-			CreateDebugPanel($"Sending request to OpenAI API:\nModel: {config.Model}\nTemperature: {temperature}\nPayload: {jsonPayload}", "API Request");
+			CreateDebugPanel($"Sending request to OpenAI API:\nModel: {config.Model}\nTemperature: {payload.Temperature}\nPayload: {jsonPayload}", "API Request");
 
 			var response = await client.PostAsync(url, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 

@@ -1,0 +1,180 @@
+# Simple Chat Examples
+
+## Basic Component Creation
+
+### [SUCCESS] Create a Circle
+[COMPLEXITY: LOW]
+[CATEGORY: GEOMETRY]
+[COMPONENTS: Circle CNR, Number Slider, Point, Unit Z]
+[PARAMETERS: Radius=5, Center={0,0,0}, Normal={0,0,1}]
+
+User: Create a circle with radius 5
+Assistant: {
+    "Advice": "Created a circle with radius 5 at origin with Z-axis normal",
+    "Additions": [
+        {
+            "Name": "Circle CNR",
+            "Id": 1
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 2,
+            "value": "0..5..100"
+        },
+        {
+            "Name": "Point",
+            "Id": 3,
+            "value": "{0,0,0}"
+        },
+        {
+            "Name": "Unit Z",
+            "Id": 4
+        }
+    ],
+    "Connections": [
+        {
+            "From": {
+                "Id": 2,
+                "ParameterName": "Number"
+            },
+            "To": {
+                "Id": 1,
+                "ParameterName": "Radius"
+            }
+        },
+        {
+            "From": {
+                "Id": 3,
+                "ParameterName": "Point"
+            },
+            "To": {
+                "Id": 1,
+                "ParameterName": "Center"
+            }
+        },
+        {
+            "From": {
+                "Id": 4,
+                "ParameterName": "Unit vector"
+            },
+            "To": {
+                "Id": 1,
+                "ParameterName": "Normal"
+            }
+        }
+    ]
+}
+
+### [FAILURE] Invalid Component
+[COMPLEXITY: LOW]
+[CATEGORY: ERROR]
+[ERROR_TYPE: INVALID_COMPONENT]
+
+User: Create a square with side length 5
+Assistant: {
+    "Advice": "Error: 'Square' component not found. Please use valid component names.",
+    "Additions": [],
+    "Connections": []
+}
+
+### [FAILURE] Invalid Parameter Type
+[COMPLEXITY: LOW]
+[CATEGORY: ERROR]
+[ERROR_TYPE: PARAMETER_MISMATCH]
+
+User: Create a circle with radius "five"
+Assistant: {
+    "Advice": "Error: Radius parameter must be a number, not a string",
+    "Additions": [],
+    "Connections": []
+}
+
+## Component Editing
+
+### [SUCCESS] Modify Component
+[COMPLEXITY: LOW]
+[CATEGORY: EDIT]
+[COMPONENTS: Number Slider]
+[PARAMETERS: Value=10]
+
+User: Make the circle bigger
+Assistant: {
+    "Advice": "Adjust the number slider to change the circle size",
+    "Additions": [
+        {
+            "Name": "Number Slider",
+            "Id": 3,
+            "value": "0..10..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 1,
+                "ParameterName": "Radius"
+            },
+            "From": {
+                "Id": 3,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+}
+
+### [SUCCESS] Component Connection
+[COMPLEXITY: LOW]
+[CATEGORY: CONNECTION]
+[COMPONENTS: Move, Unit Z, Number Slider]
+[PARAMETERS: Distance=10]
+
+User: Add a move component and connect it to the circle
+Assistant: {
+    "Advice": "The circle will be moved along the Z axis",
+    "Additions": [
+        {
+            "Name": "Move",
+            "Id": 4
+        },
+        {
+            "Name": "Unit Z",
+            "Id": 5
+        },
+        {
+            "Name": "Number Slider",
+            "Id": 6,
+            "value": "0..10..100"
+        }
+    ],
+    "Connections": [
+        {
+            "To": {
+                "Id": 4,
+                "ParameterName": "Geometry"
+            },
+            "From": {
+                "Id": 1,
+                "ParameterName": "Circle"
+            }
+        },
+        {
+            "To": {
+                "Id": 4,
+                "ParameterName": "Motion"
+            },
+            "From": {
+                "Id": 5,
+                "ParameterName": "Unit vector"
+            }
+        },
+        {
+            "To": {
+                "Id": 4,
+                "ParameterName": "Distance"
+            },
+            "From": {
+                "Id": 6,
+                "ParameterName": "Number"
+            }
+        }
+    ]
+} 

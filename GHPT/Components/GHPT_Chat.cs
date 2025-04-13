@@ -14,6 +14,7 @@ using GHPT.Prompts;
 using GHPT.Utils;
 using GHPT.IO;
 using GHPT.UI;
+using GHPT.Builders;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using Grasshopper.Kernel.Special;
@@ -23,7 +24,7 @@ namespace GHPT.Components
 {
     public class GHPT_Chat : GH_Component
     {
-        private ChatPromptBuilder _promptBuilder;
+        private PromptCoordinator _promptCoordinator;
         internal List<ChatMessage> _chatHistory;
         private const int MAX_HISTORY_LENGTH = 50;
         private const int BUTTON_WIDTH = 80;
@@ -39,7 +40,7 @@ namespace GHPT.Components
               "Chat interface for GHPT",
               "GHPT", "Interface")
         {
-            _promptBuilder = new ChatPromptBuilder("GHPT/Prompts/chat_examples.txt");
+            _promptCoordinator = new PromptCoordinator();
             _chatHistory = new List<ChatMessage>();
             _currentConfig = ConfigUtil.Configs.FirstOrDefault();
             MessageHandlers = new List<GH_Attributes<IGH_Param>>();
@@ -115,7 +116,7 @@ namespace GHPT.Components
                 try
                 {
                     // Add user message to history
-                    _promptBuilder.AddMessage("user", message);
+                    _promptCoordinator.AddMessage("user", message);
                     _chatHistory.Add(new ChatMessage
                     {
                         Role = "user",
@@ -126,64 +127,32 @@ namespace GHPT.Components
                     // Get current Grasshopper state
                     var currentState = GetCurrentGrasshopperState();
 
-                    // Build prompt in the same format as prompt.txt
-                    string prompt = BuildPrompt(message, currentState);
+                    // Process request using PromptCoordinator
+                    var result = _promptCoordinator.ProcessRequest(message).Result;
                     
-                    // Process prompt and get response
-                    var response = ProcessPrompt(prompt).Result;
-                    
-                    // Parse JSON response
-                    var jsonResponse = JsonConvert.DeserializeObject<dynamic>(response);
-                    
+                    if (!result.Success)
+                    {
+                        AddRuntimeMessage(GH_RuntimeMessageLevel.Error, result.Error);
+                        return;
+                    }
+
                     // Add AI response to history
-                    _promptBuilder.AddMessage("assistant", response);
+                    _promptCoordinator.AddMessage("assistant", result.Result.Advice);
                     _chatHistory.Add(new ChatMessage
                     {
                         Role = "assistant",
-                        Content = response,
+                        Content = result.Result.Advice,
                         Timestamp = DateTime.Now
                     });
 
                     // Output results
-                    DA.SetData(0, jsonResponse.Advice.ToString());
-                    DA.SetData(1, jsonResponse);
+                    DA.SetData(0, result.Result.Advice);
+                    DA.SetData(1, JsonConvert.SerializeObject(result.Result));
                 }
                 catch (Exception ex)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Error processing message: {ex.Message}");
                 }
-            }
-        }
-
-        private string BuildPrompt(string message, GrasshopperState currentState)
-        {
-            // Use the Prompt class to get the base prompt
-            string prompt = Prompt.GetPrompt(message);
-            
-            // Add the current state as JSON
-            prompt += $"\n// JSON: {JsonConvert.SerializeObject(currentState, Formatting.Indented)}";
-            
-            return prompt;
-        }
-
-        private string GenerateReasoning(string message, GrasshopperState currentState)
-        {
-            // Analyze the current state and message to generate appropriate reasoning
-            // This should follow the same pattern as in prompt.txt
-            return "Analyzing the current state and user request...";
-        }
-
-        private async Task<string> ProcessPrompt(string prompt)
-        {
-            try
-            {
-                var response = await ClientUtil.Ask(_currentConfig, prompt);
-                return response.Choices.FirstOrDefault()?.Message?.Content ?? "No response received";
-            }
-            catch (Exception ex)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"API Error: {ex.Message}");
-                throw;
             }
         }
 
@@ -254,7 +223,7 @@ namespace GHPT.Components
             try
             {
                 // Add user message to history
-                _promptBuilder.AddMessage("user", message);
+                _promptCoordinator.AddMessage("user", message);
                 _chatHistory.Add(new ChatMessage
                 {
                     Role = "user",
@@ -265,29 +234,26 @@ namespace GHPT.Components
                 // Get current Grasshopper state
                 var currentState = GetCurrentGrasshopperState();
 
-                // Build prompt
-                string prompt = BuildPrompt(message, currentState);
+                // Process request using PromptCoordinator
+                var result = await _promptCoordinator.ProcessRequest(message);
                 
-                // Process prompt and get response
-                var response = await ProcessPrompt(prompt);
-                
-                // Extract JSON from response
-                string chatGPTJson = PromptUtils.GetChatGPTJson(response);
-                
-                // Parse JSON into PromptData
-                var promptData = PromptUtils.GetPromptDataFromResponse(chatGPTJson);
-                
+                if (!result.Success)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, result.Error);
+                    return;
+                }
+
                 // Add AI response to history
-                _promptBuilder.AddMessage("assistant", promptData.Advice);
+                _promptCoordinator.AddMessage("assistant", result.Result.Advice);
                 _chatHistory.Add(new ChatMessage
                 {
                     Role = "assistant",
-                    Content = promptData.Advice,
+                    Content = result.Result.Advice,
                     Timestamp = DateTime.Now
                 });
 
                 // Create components if any
-                if (promptData.Additions != null && promptData.Additions.Any())
+                if (result.Result.Additions != null && result.Result.Additions.Any())
                 {
                     var doc = OnPingDocument();
                     if (doc != null)
@@ -295,7 +261,7 @@ namespace GHPT.Components
                         // Compute tiers
                         Dictionary<int, List<Addition>> buckets = new();
 
-                        foreach (Addition addition in promptData.Additions)
+                        foreach (Addition addition in result.Result.Additions)
                         {
                             if (buckets.ContainsKey(addition.Tier))
                             {
@@ -322,9 +288,9 @@ namespace GHPT.Components
                         }
 
                         // Connect components
-                        if (promptData.Connections != null)
+                        if (result.Result.Connections != null)
                         {
-                            foreach (ConnectionPairing connection in promptData.Connections)
+                            foreach (ConnectionPairing connection in result.Result.Connections)
                             {
                                 GraphUtil.ConnectComponent(doc, connection);
                             }
