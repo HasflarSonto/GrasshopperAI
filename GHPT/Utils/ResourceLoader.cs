@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using GHPT.Utils;
 using Grasshopper;
+using GHPT.Prompts;
 
 namespace GHPT.Utils
 {
@@ -187,14 +188,24 @@ namespace GHPT.Utils
             return ComponentBestPractices.BestPractices;
         }
 
-        public static string LoadPromptTemplate(string templateName)
+        public static string LoadPromptTemplate(string templateName, string userRequest = null, AnalysisResult analysis = null)
         {
-            return templateName switch
+            // For component analyzer and generator prompts, we use the static classes
+            if (templateName == "component_analyzer.txt")
             {
-                "component_generator.txt" => ComponentGeneratorPrompt.Prompt,
-                "component_analyzer.txt" => ComponentAnalyzerPrompt.Prompt,
-                _ => LoadResource(Path.Combine("Chat_Prompts", templateName), true)
-            };
+                var examples = ComponentExamples.GetComplexExamples();
+                var bestPractices = ComponentBestPractices.GetBestPractices();
+                return ComponentAnalyzerPrompt.GetPrompt(userRequest, examples, bestPractices);
+            }
+            else if (templateName == "component_generator.txt")
+            {
+                var documentation = ComponentDocumentation.GetDocumentation();
+                var examples = ComponentExamples.GetComplexExamples();
+                return ComponentGeneratorPrompt.GetPrompt(analysis, documentation, examples);
+            }
+            
+            // For other prompts, load from file
+            return LoadResource(Path.Combine("Chat_Prompts", templateName), true);
         }
     }
 } 

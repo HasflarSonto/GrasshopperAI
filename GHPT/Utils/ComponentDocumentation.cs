@@ -238,5 +238,10 @@ namespace GHPT.Utils
   - Both inputs must be numeric
   - B cannot be zero
   - Output can only connect to numeric inputs";
+
+        public static string GetDocumentation()
+        {
+            return Documentation;
+        }
     }
 } 

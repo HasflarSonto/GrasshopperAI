@@ -144,5 +144,15 @@ filtered_points = [p for p in points if p.X > 5]
 # Transform points based on condition
 transformed_points = [p + Vector3d(0,10,0) if p.X > 5 else p for p in points]
 ```";
+
+        public static string GetSimpleExamples()
+        {
+            return SimpleExamples;
+        }
+
+        public static string GetComplexExamples()
+        {
+            return ComplexExamples;
+        }
     }
 } 

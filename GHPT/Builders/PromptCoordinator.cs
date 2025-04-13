@@ -1,95 +1,84 @@
-using GHPT.Prompts;
-using System.Text.Json;
-using System.IO;
+using System;
 using System.Threading.Tasks;
-using System.Drawing;
+using System.Text.Json;
+using GHPT.Utils;
+using GHPT.IO;
+using System.Collections.Generic;
+using System.Linq;
+using GHPT.Prompts;
 
 namespace GHPT.Builders
 {
     public class PromptCoordinator
     {
-        private readonly ComponentAnalyzerBuilder _analyzerBuilder;
-        private readonly ComponentGeneratorBuilder _generatorBuilder;
+        private readonly ComplexityCheckBuilder _complexityChecker;
+        private readonly ComponentAnalyzerAndGeneratorBuilder _simpleBuilder;
+        private readonly ComponentAnalyzerBuilder _analyzer;
+        private readonly ComponentGeneratorBuilder _generator;
         private readonly List<ChatMessage> _conversationHistory;
         private const int MAX_HISTORY_LENGTH = 10;
 
-        public PromptCoordinator()
+        public PromptCoordinator(GPTClient gptClient)
         {
-            _analyzerBuilder = new ComponentAnalyzerBuilder();
-            _generatorBuilder = new ComponentGeneratorBuilder();
+            _complexityChecker = new ComplexityCheckBuilder(gptClient);
+            _simpleBuilder = new ComponentAnalyzerAndGeneratorBuilder(gptClient);
+            _analyzer = new ComponentAnalyzerBuilder(gptClient);
+            _generator = new ComponentGeneratorBuilder(gptClient);
             _conversationHistory = new List<ChatMessage>();
         }
 
-        public async Task<CoordinatorResult> ProcessRequest(string userRequest)
+        public async Task<CoordinatorResult> ProcessRequest(string request)
         {
             try
             {
-                // 1. Analyze the request using ComponentAnalyzerBuilder
-                var analysisResult = await _analyzerBuilder.AnalyzeRequest(userRequest);
-
-                // 2. Based on complexity, either:
-                if (analysisResult.Type == "simple")
+                // 1. Check complexity
+                string complexity = await _complexityChecker.CheckComplexity(request);
+                
+                if (complexity == "simple")
                 {
-                    // For simple requests, convert SimpleComponent to PromptData
-                    var simpleComponent = analysisResult.SimpleComponent;
-                    var promptData = new PromptData
+                    // For simple requests, use the combined analyzer and generator
+                    var result = await _simpleBuilder.AnalyzeAndGenerate(request);
+                    if (result.IsTooComplex)
                     {
-                        Advice = "Created a simple component based on your request",
-                        Additions = new List<Addition>
+                        return new CoordinatorResult
                         {
-                            new Addition
-                            {
-                                Name = simpleComponent.Name,
-                                Id = 1,
-                                Value = "",
-                                Tier = 0
-                            }
-                        },
-                        Connections = new List<ConnectionPairing>()
-                    };
+                            Success = false,
+                            Error = "Request was determined to be too complex for simple processing",
+                            Result = null
+                        };
+                    }
 
                     return new CoordinatorResult
                     {
                         Success = true,
                         Error = null,
-                        Result = promptData
-                    };
-                }
-                else if (analysisResult.Type == "complex")
-                {
-                    // For complex requests, pass the analysis to the generator
-                    var generationResult = await _generatorBuilder.GenerateComponents(analysisResult);
-                    
-                    // Convert GenerationResult to PromptData
-                    var promptData = new PromptData
-                    {
-                        Advice = generationResult.Advice,
-                        Additions = generationResult.Additions.Select(a => new Addition
-                        {
-                            Name = a.Name,
-                            Id = a.Id,
-                            Value = a.Value,
-                            Tier = 0
-                        }).ToList(),
-                        Connections = generationResult.Connections.Select(c => new ConnectionPairing
-                        {
-                            FromComponentId = c.From.Id,
-                            FromParameter = c.From.ParameterName,
-                            ToComponentId = c.To.Id,
-                            ToParameter = c.To.ParameterName
-                        }).ToList()
-                    };
-                    
-                    return new CoordinatorResult
-                    {
-                        Success = true,
-                        Error = null,
-                        Result = promptData
+                        Result = ConvertToPromptData(result, complexity, "Simple request - using direct component generation")
                     };
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Invalid analysis result type: {analysisResult.Type}");
+                    // For complex requests, use the full pipeline
+                    // 2. Analyze the request
+                    var analysis = await _analyzer.AnalyzeRequest(request);
+                    if (analysis.IsTooComplex)
+                    {
+                        return new CoordinatorResult
+                        {
+                            Success = false,
+                            Error = "Request was determined to be too complex to process",
+                            Result = null
+                        };
+                    }
+
+                    // 3. Generate components based on analysis
+                    var generationResult = await _generator.GenerateComponents(analysis);
+                    
+                    return new CoordinatorResult
+                    {
+                        Success = true,
+                        Error = null,
+                        Result = ConvertToPromptData(generationResult, complexity, string.Join(", ", analysis.Analysis.KeyComponents))
+                    };
                 }
             }
             catch (Exception ex)
@@ -101,6 +90,54 @@ namespace GHPT.Builders
                     Result = null
                 };
             }
+        }
+
+        private PromptData ConvertToPromptData(ComponentAnalysisResult result, string complexity, string analysis)
+        {
+            return new PromptData
+            {
+                Advice = result.Advice,
+                Complexity = complexity,
+                Analysis = analysis,
+                Additions = result.Additions.Select(a => new Addition
+                {
+                    Name = a.Name,
+                    Id = a.Id,
+                    Value = a.Value?.ToString(),
+                    Tier = 0 // Default tier, can be adjusted based on component type
+                }).ToList(),
+                Connections = result.Connections.Select(c => new ConnectionPairing
+                {
+                    FromComponentId = c.From.Id,
+                    FromParameter = c.From.ParameterName,
+                    ToComponentId = c.To.Id,
+                    ToParameter = c.To.ParameterName
+                }).ToList()
+            };
+        }
+
+        private PromptData ConvertToPromptData(GenerationResult result, string complexity, string analysis)
+        {
+            return new PromptData
+            {
+                Advice = result.Advice,
+                Complexity = complexity,
+                Analysis = analysis,
+                Additions = result.Additions.Select(a => new Addition
+                {
+                    Name = a.Name,
+                    Id = a.Id,
+                    Value = a.Value?.ToString(),
+                    Tier = 0 // Default tier, can be adjusted based on component type
+                }).ToList(),
+                Connections = result.Connections.Select(c => new ConnectionPairing
+                {
+                    FromComponentId = c.From.Id,
+                    FromParameter = c.From.ParameterName,
+                    ToComponentId = c.To.Id,
+                    ToParameter = c.To.ParameterName
+                }).ToList()
+            };
         }
 
         public void AddMessage(string role, string content)

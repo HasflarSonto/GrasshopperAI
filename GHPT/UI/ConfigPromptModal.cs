@@ -29,18 +29,18 @@ namespace GHPT.UI
             var config_name = new TextBox { PlaceholderText = "Config Name" };
             config_name.TextChanged += (sender, e) => config.Name = config_name.Text;
 
-            var model_version = new ComboBox { DataStore = Models.ModelOptions.Keys, SelectedIndex = 1 };
+            var model_version = new ComboBox { DataStore = GHPT.Configs.Models.ModelOptions.Keys, SelectedIndex = 1 };
             model_version.SelectedValueChanged += (sender, e) =>
             {
                 config.Model = model_version.SelectedValue.ToString();
-                config.Version = Models.ModelOptions.First(kvp => kvp.Key == config.Model).Value;
+                config.Version = GHPT.Configs.Models.ModelOptions.First(kvp => kvp.Key == config.Model).Value;
             };
 
             config = new GPTConfig()
             {
                 Model = model_version.Text,
                 Name = config_name.Text,
-                Version = Models.ModelOptions.First(kvp => kvp.Key == model_version.Text).Value
+                Version = GHPT.Configs.Models.ModelOptions.First(kvp => kvp.Key == model_version.Text).Value
             };
 
             DefaultButton = new Button { Text = "Save" };

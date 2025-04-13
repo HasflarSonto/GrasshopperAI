@@ -1,91 +1,146 @@
-using GHPT.Prompts;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.IO;
+using System;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using System.Text.Json;
 using GHPT.Utils;
 using GHPT.IO;
-using System.Collections.Generic;
+using GHPT.Prompts;
+using System.IO;
 using System.Drawing;
 using System.Linq;
+using GHPT.Models;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace GHPT.Builders
 {
     public class ComponentGeneratorBuilder
     {
-        private readonly string _componentDocumentation;
-        private readonly string _simpleExamples;
-        private readonly string _complexExamples;
-        private readonly string _bestPractices;
+        private readonly GPTClient _gptClient;
+        private readonly string _documentation;
+        private readonly string _examples;
 
-        public ComponentGeneratorBuilder()
+        public ComponentGeneratorBuilder(GPTClient gptClient)
         {
-            _componentDocumentation = ResourceLoader.LoadComponentDocumentation();
-            _simpleExamples = ResourceLoader.LoadSimpleExamples();
-            _complexExamples = ResourceLoader.LoadComplexExamples();
-            _bestPractices = ResourceLoader.LoadBestPractices();
+            _gptClient = gptClient;
+            _documentation = ComponentDocumentation.GetDocumentation();
+            _examples = ComponentExamples.GetComplexExamples();
         }
 
-        public async Task<PromptData> GenerateComponents(AnalysisResult analysis)
+        public async Task<GenerationResult> GenerateComponents(GHPT.Builders.AnalysisResult analysis)
         {
             try
             {
-                LoggingUtil.LogInfo($"Starting component generation for analysis type: {analysis.Type}");
+                var promptAnalysis = ConvertToPromptAnalysis(analysis);
+                string prompt = ComponentGeneratorPrompt.GetPrompt(promptAnalysis, _documentation, _examples);
+                string response = await _gptClient.GetCompletion(prompt);
 
-                // 1. Load and format the prompt template
-                var promptTemplate = ResourceLoader.LoadPromptTemplate("component_generator.txt")
-                    .Replace("{ComponentDocumentation}", _componentDocumentation)
-                    .Replace("{SimpleExamples}", _simpleExamples)
-                    .Replace("{ComplexExamples}", _complexExamples)
-                    .Replace("{BestPractices}", _bestPractices);
+                // Extract JSON from markdown code block if present
+                var jsonMatch = Regex.Match(response, @"```json\s*(\{[\s\S]*?\})\s*```");
+                string jsonContent = jsonMatch.Success ? jsonMatch.Groups[1].Value : response;
 
-                // 2. Create the payload with proper message formatting
-                var payload = new AskPayload();
-                payload.Model = "gpt-4";
-                payload.Temperature = 0.7;
-                
-                // Add system message with documentation and examples
-                payload.AddSystemMessage(promptTemplate);
-                
-                // Add user message with analysis
-                payload.AddUserMessage(JsonConvert.SerializeObject(analysis));
-
-                // 3. Send request to API
-                var configs = ConfigUtil.Configs;
-                if (!configs.Any())
+                // Parse the JSON response with proper options
+                var options = new JsonSerializerOptions
                 {
-                    LoggingUtil.LogError("No valid GPT configuration found");
-                    throw new InvalidOperationException("No valid GPT configuration found");
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
+                };
+
+                // First deserialize into a dynamic object to validate structure
+                var jsonDocument = JsonDocument.Parse(jsonContent);
+                var root = jsonDocument.RootElement;
+
+                // Create the result object
+                var result = new GenerationResult
+                {
+                    Advice = root.GetProperty("Advice").GetString(),
+                    Additions = root.GetProperty("Additions").Deserialize<Component[]>(options),
+                    Connections = root.GetProperty("Connections").Deserialize<ConnectionPairing[]>(options)
+                };
+
+                if (result == null)
+                {
+                    throw new Exception("Failed to parse the AI response");
                 }
 
-                var config = configs.First();
-                var response = await ClientUtil.Ask(config, payload);
-                var content = response.Choices.FirstOrDefault()?.Message?.Content;
+                // Validate the generated configuration
+                ValidateConfiguration(result);
 
-                if (string.IsNullOrEmpty(content))
-                {
-                    LoggingUtil.LogError("No response received from LLM");
-                    throw new InvalidOperationException("No response received from LLM");
-                }
-
-                // 4. Parse the response into PromptData
-                var result = JsonConvert.DeserializeObject<PromptData>(content);
-                
-                // 5. Validate the response using shared validation
-                if (!ComponentValidationUtils.ValidateComponentJson(result))
-                {
-                    LoggingUtil.LogError("Invalid component JSON in response");
-                    throw new InvalidOperationException("Invalid component JSON in response");
-                }
-
-                LoggingUtil.LogInfo($"Successfully generated components. Count: {result.Additions?.Count() ?? 0}");
                 return result;
             }
             catch (Exception ex)
             {
-                LoggingUtil.LogError("Error generating components", ex);
-                throw;
+                throw new Exception($"Error generating components: {ex.Message}", ex);
+            }
+        }
+
+        private GHPT.Prompts.AnalysisResult ConvertToPromptAnalysis(GHPT.Builders.AnalysisResult analysis)
+        {
+            var result = new GHPT.Prompts.AnalysisResult
+            {
+                Type = analysis.IsTooComplex ? "complex" : "simple",
+                Error = analysis.Error
+            };
+
+            // Create Analysis object
+            result.Analysis = new GHPT.Prompts.Analysis
+            {
+                Description = string.Join(", ", analysis.Analysis.KeyComponents),
+                RequiredComponents = analysis.Analysis.KeyComponents.ToList(),
+                RequiredConnections = analysis.Outline.Connections.Select(c => $"{c.From} -> {c.To} ({c.Parameter})").ToList()
+            };
+
+            // Create Plan object
+            result.Plan = new GHPT.Prompts.Plan
+            {
+                Steps = analysis.Outline.Steps.Select(s => s.Description).ToList(),
+                RequiredComponents = analysis.Outline.Steps.SelectMany(s => s.Components).ToList()
+            };
+
+            // Create ComplexAnalysis object
+            result.ComplexAnalysis = new GHPT.Prompts.ComplexAnalysis
+            {
+                Description = string.Join(", ", analysis.Analysis.KeyComponents),
+                RequiredComponents = analysis.Analysis.KeyComponents.ToList(),
+                RequiredConnections = analysis.Outline.Connections.Select(c => $"{c.From} -> {c.To} ({c.Parameter})").ToList()
+            };
+
+            return result;
+        }
+
+        private void ValidateConfiguration(GenerationResult result)
+        {
+            if (result.Additions == null || result.Connections == null)
+            {
+                throw new Exception("Invalid configuration: Additions or Connections are null");
+            }
+
+            // Validate component IDs are unique
+            var componentIds = result.Additions.Select(c => c.Id).ToList();
+            if (componentIds.Distinct().Count() != componentIds.Count)
+            {
+                throw new Exception("Duplicate component IDs found");
+            }
+
+            // Validate all connections reference existing components
+            foreach (var connection in result.Connections)
+            {
+                if (!componentIds.Contains(connection.FromComponentId))
+                {
+                    throw new Exception($"Connection references non-existent source component ID: {connection.FromComponentId}");
+                }
+                if (!componentIds.Contains(connection.ToComponentId))
+                {
+                    throw new Exception($"Connection references non-existent target component ID: {connection.ToComponentId}");
+                }
+            }
+
+            // Validate component positions are reasonable
+            foreach (var component in result.Additions)
+            {
+                if (component.Position.X < 0 || component.Position.Y < 0)
+                {
+                    throw new Exception($"Invalid position for component {component.Id}: ({component.Position.X}, {component.Position.Y})");
+                }
             }
         }
     }
@@ -93,27 +148,7 @@ namespace GHPT.Builders
     public class GenerationResult
     {
         public string Advice { get; set; }
-        public List<ComponentAddition> Additions { get; set; }
-        public List<ComponentConnection> Connections { get; set; }
-    }
-
-    public class ComponentAddition
-    {
-        public string Name { get; set; }
-        public int Id { get; set; }
-        public string Value { get; set; }
-        public PointF Position { get; set; }
-    }
-
-    public class ComponentConnection
-    {
-        public ConnectionPoint From { get; set; }
-        public ConnectionPoint To { get; set; }
-    }
-
-    public class ConnectionPoint
-    {
-        public int Id { get; set; }
-        public string ParameterName { get; set; }
+        public Component[] Additions { get; set; }
+        public ConnectionPairing[] Connections { get; set; }
     }
 } 

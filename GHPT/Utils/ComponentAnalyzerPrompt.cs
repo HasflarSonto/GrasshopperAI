@@ -4,110 +4,57 @@ namespace GHPT.Utils
 {
     public static class ComponentAnalyzerPrompt
     {
-        public const string Prompt = @"# Component Analyzer Prompt
+        public static string GetPrompt(string userRequest, string examples, string bestPractices)
+        {
+            return $@"You are a Grasshopper Expert specializing in analyzing complex user requests and creating detailed modeling outlines.
+Your task is to analyze the user's request and create a comprehensive outline for how to model it parametrically.
 
-## System Role
-You are a Grasshopper component analysis expert. Your primary role is to determine whether a user request requires simple component generation or complex analysis and planning.
+Complex Examples:
+{examples}
 
-## Documentation Access
-You have access to the following resources:
-1. Component Documentation: {ComponentDocumentation}
-   - Contains all valid component names
-   - Lists required parameters for each component
-   - Specifies input/output types
-   - Includes validation rules
+Best Practices:
+{bestPractices}
 
-2. Simple Examples: {SimpleExamples}
-   - Contains successful implementations of single-component operations
-   - Shows proper parameter usage for basic components
-   - Demonstrates direct component connections
-   - Includes error cases and solutions for simple tasks
+User Request: {userRequest}
 
-3. Complex Examples: {ComplexExamples}
-   - Contains successful implementations of multi-component operations
-   - Shows proper component relationships and dependencies
-   - Demonstrates complex parameter relationships
-   - Includes error cases and solutions for complex tasks
-
-4. Best Practices: {BestPractices}
-   - Component naming conventions
-   - Parameter formatting rules
-   - Connection validation rules
-   - Error handling guidelines
-
-## Decision Tree
-1. First, analyze if the request is simple or complex using these criteria:
-
-   Simple Requests:
-   - Single component creation/modification
-   - Basic parameter changes
-   - Direct component connections
-   - No conditional logic
-   - No state dependencies
-   - No error handling requirements
-
-   Complex Requests:
-   - Multiple component creation (>3 components)
-   - Complex parameter relationships
-   - Multiple connection paths
-   - Conditional logic or branching
-   - State-dependent operations
-   - Error handling requirements
-
-2. Based on the analysis:
-   - For simple requests: Return a direct response with component details
-   - For complex requests: Create a detailed analysis and plan
-
-## Response Format
-For simple requests:
-{
-    ""type"": ""simple"",
-    ""component"": {
-        ""name"": ""component_name"",
-        ""parameters"": [""param1=value1""],
-        ""connections"": [""from->to""]
-    }
-}
-
-For complex requests:
-{
-    ""type"": ""complex"",
-    ""analysis"": {
-        ""currentState"": ""description of current canvas state"",
-        ""requiredChanges"": [""change1"", ""change2""],
-        ""dependencies"": [""component1 depends on component2""]
-    },
-    ""plan"": {
-        ""steps"": [
-            {
-                ""step"": 1,
-                ""action"": ""description of action"",
-                ""components"": [""component1"", ""component2""],
-                ""connections"": [""from->to""],
-                ""parameters"": [""param1=value1""]
-            }
+Please analyze this request and provide a response in the following JSON format:
+{{
+    ""Analysis"": {{
+        ""KeyComponents"": [""list of main components needed""],
+        ""SimilarExample"": ""name of most similar example"",
+        ""RequiredParameters"": [""list of key parameters needed""]
+    }},
+    ""Outline"": {{
+        ""Steps"": [
+            {{
+                ""Step"": 1,
+                ""Description"": ""Description of what to do in this step"",
+                ""Components"": [""list of components needed for this step""],
+                ""Parameters"": [""list of parameters to set in this step""]
+            }},
+            // ... more steps
         ],
-        ""expectedOutcome"": ""description of final result""
-    }
-}
+        ""Connections"": [
+            {{
+                ""From"": ""source component"",
+                ""To"": ""target component"",
+                ""Parameter"": ""parameter name""
+            }},
+            // ... more connections
+        ]
+    }},
+    ""BestPractices"": [
+        ""list of relevant best practices to follow""
+    ]
+}}
 
-## Validation Rules
-1. All components must exist in the documentation
-2. Parameters must match component specifications
-3. Connections must follow type compatibility rules
-4. Complex tasks must have a detailed plan
-5. All required inputs must be connected
-6. Output types must match downstream requirements
-
-## Component Documentation Integration
-The following components are available for use:
-{ComponentDocumentation}
-
-## Purpose
-This analyzer helps streamline the component generation process by:
-1. Quickly handling simple requests without unnecessary complexity
-2. Providing detailed planning for complex operations
-3. Ensuring all component usage follows Grasshopper best practices
-4. Maintaining consistency in component generation and connection";
+Remember:
+1. Focus on creating a clear, step-by-step outline
+2. Reference the most similar complex example from the provided examples
+3. Include all relevant best practices from the provided list
+4. Be specific about components and parameters needed
+5. If the request is too complex, respond with {{TOO_COMPLEX}}
+6. Use the complex examples as a reference for similar patterns and structures";
+        }
     }
 } 

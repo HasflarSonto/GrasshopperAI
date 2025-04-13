@@ -104,5 +104,10 @@ namespace GHPT.Utils
    - Circular dependencies
    - Missing required inputs
    - Incorrect parameter types";
+
+        public static string GetBestPractices()
+        {
+            return BestPractices;
+        }
     }
 } 

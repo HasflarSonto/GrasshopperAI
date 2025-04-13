@@ -7,6 +7,8 @@ namespace GHPT.Prompts
     public class PromptData
     {
         public string Advice { get; set; }
+        public string Complexity { get; set; }
+        public string Analysis { get; set; }
         public IEnumerable<Addition> Additions { get; set; }
         public IEnumerable<ConnectionPairing> Connections { get; set; }
 

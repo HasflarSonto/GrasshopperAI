@@ -40,9 +40,9 @@ namespace GHPT.Components
               "Chat interface for GHPT",
               "GHPT", "Interface")
         {
-            _promptCoordinator = new PromptCoordinator();
-            _chatHistory = new List<ChatMessage>();
             _currentConfig = ConfigUtil.Configs.FirstOrDefault();
+            _promptCoordinator = new PromptCoordinator(new GPTClient(_currentConfig));
+            _chatHistory = new List<ChatMessage>();
             MessageHandlers = new List<GH_Attributes<IGH_Param>>();
             
             // Initialize the input panel
@@ -100,6 +100,8 @@ namespace GHPT.Components
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Response", "R", "AI response", GH_ParamAccess.item);
+            pManager.AddTextParameter("Complexity", "C", "Request complexity", GH_ParamAccess.item);
+            pManager.AddTextParameter("Analysis", "A", "Request analysis", GH_ParamAccess.item);
             pManager.AddGenericParameter("JSON", "J", "JSON response", GH_ParamAccess.item);
         }
 
@@ -147,7 +149,9 @@ namespace GHPT.Components
 
                     // Output results
                     DA.SetData(0, result.Result.Advice);
-                    DA.SetData(1, JsonConvert.SerializeObject(result.Result));
+                    DA.SetData(1, result.Result.Complexity);
+                    DA.SetData(2, result.Result.Analysis);
+                    DA.SetData(3, JsonConvert.SerializeObject(result.Result));
                 }
                 catch (Exception ex)
                 {
@@ -231,6 +235,14 @@ namespace GHPT.Components
                     Timestamp = DateTime.Now
                 });
 
+                // Add status message about starting analysis
+                _chatHistory.Add(new ChatMessage
+                {
+                    Role = "system",
+                    Content = "🤔 Analyzing your request...",
+                    Timestamp = DateTime.Now
+                });
+
                 // Get current Grasshopper state
                 var currentState = GetCurrentGrasshopperState();
 
@@ -239,9 +251,45 @@ namespace GHPT.Components
                 
                 if (!result.Success)
                 {
+                    // Add error message to chat
+                    _chatHistory.Add(new ChatMessage
+                    {
+                        Role = "system",
+                        Content = $"❌ Error: {result.Error}",
+                        Timestamp = DateTime.Now
+                    });
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, result.Error);
                     return;
                 }
+
+                // Add analysis result message
+                string analysisMessage = "✅ Analysis complete!\n";
+                if (result.Result.Additions != null && result.Result.Additions.Any())
+                {
+                    int componentCount = result.Result.Additions.Count();
+                    analysisMessage += $"📊 Complexity: {(componentCount > 1 ? "Complex" : "Simple")}\n";
+                    analysisMessage += $"🔧 Will create {componentCount} component{(componentCount > 1 ? "s" : "")}\n";
+                    
+                    if (componentCount > 1)
+                    {
+                        analysisMessage += "\n📋 Plan:\n";
+                        foreach (var addition in result.Result.Additions)
+                        {
+                            analysisMessage += $"  • {addition.Name}\n";
+                        }
+                    }
+                }
+                else
+                {
+                    analysisMessage += "📝 No components to create - providing advice only";
+                }
+
+                _chatHistory.Add(new ChatMessage
+                {
+                    Role = "system",
+                    Content = analysisMessage,
+                    Timestamp = DateTime.Now
+                });
 
                 // Add AI response to history
                 _promptCoordinator.AddMessage("assistant", result.Result.Advice);
@@ -258,6 +306,14 @@ namespace GHPT.Components
                     var doc = OnPingDocument();
                     if (doc != null)
                     {
+                        // Add status message about component creation
+                        _chatHistory.Add(new ChatMessage
+                        {
+                            Role = "system",
+                            Content = "🛠️ Creating components...",
+                            Timestamp = DateTime.Now
+                        });
+
                         // Compute tiers
                         Dictionary<int, List<Addition>> buckets = new();
 
@@ -282,19 +338,57 @@ namespace GHPT.Components
 
                             foreach (Addition addition in buckets[tier])
                             {
-                                GraphUtil.InstantiateComponent(doc, addition, new System.Drawing.PointF(x, y));
-                                y += yIncrement;
+                                try
+                                {
+                                    GraphUtil.InstantiateComponent(doc, addition, new System.Drawing.PointF(x, y));
+                                    y += yIncrement;
+                                }
+                                catch (Exception ex)
+                                {
+                                    _chatHistory.Add(new ChatMessage
+                                    {
+                                        Role = "system",
+                                        Content = $"❌ Failed to create component {addition.Name}: {ex.Message}",
+                                        Timestamp = DateTime.Now
+                                    });
+                                }
                             }
                         }
 
                         // Connect components
                         if (result.Result.Connections != null)
                         {
+                            _chatHistory.Add(new ChatMessage
+                            {
+                                Role = "system",
+                                Content = "🔌 Connecting components...",
+                                Timestamp = DateTime.Now
+                            });
+
                             foreach (ConnectionPairing connection in result.Result.Connections)
                             {
-                                GraphUtil.ConnectComponent(doc, connection);
+                                try
+                                {
+                                    GraphUtil.ConnectComponent(doc, connection);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _chatHistory.Add(new ChatMessage
+                                    {
+                                        Role = "system",
+                                        Content = $"❌ Failed to connect components: {ex.Message}",
+                                        Timestamp = DateTime.Now
+                                    });
+                                }
                             }
                         }
+
+                        _chatHistory.Add(new ChatMessage
+                        {
+                            Role = "system",
+                            Content = "✅ Component creation complete!",
+                            Timestamp = DateTime.Now
+                        });
 
                         doc.ScheduleSolution(5, d =>
                         {
@@ -317,6 +411,13 @@ namespace GHPT.Components
             }
             catch (Exception ex)
             {
+                // Add error message to chat
+                _chatHistory.Add(new ChatMessage
+                {
+                    Role = "system",
+                    Content = $"❌ Error processing message: {ex.Message}",
+                    Timestamp = DateTime.Now
+                });
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"Error processing message: {ex.Message}");
             }
         }
@@ -494,15 +595,16 @@ namespace GHPT.Components
                 float availableWidth = _chatDisplay.Width - (PADDING * 2);
 
                 // First measure all messages to get their heights
-                var messageHeights = new List<(float Height, bool IsUser)>();
+                var messageHeights = new List<(float Height, bool IsUser, bool IsSystem)>();
                 float totalHeight = 0;
                 foreach (var message in ChatOwner._chatHistory)
                 {
-                    string prefix = message.Role == "user" ? "You: " : "AI: ";
+                    string prefix = message.Role == "user" ? "You: " : 
+                                  message.Role == "system" ? "System: " : "AI: ";
                     string text = prefix + message.Content;
                     
                     var size = graphics.MeasureString(text, font, (int)availableWidth, format);
-                    messageHeights.Add((size.Height + 8, message.Role == "user")); // Increased padding
+                    messageHeights.Add((size.Height + 8, message.Role == "user", message.Role == "system")); // Increased padding
                     totalHeight += size.Height + 8;
                 }
 
@@ -521,27 +623,36 @@ namespace GHPT.Components
                 for (int i = 0; i < ChatOwner._chatHistory.Count; i++)
                 {
                     var message = ChatOwner._chatHistory[i];
-                    var (height, isUser) = messageHeights[i];
+                    var (height, isUser, isSystem) = messageHeights[i];
                     
                     if (y + height > _chatDisplay.Y && y < _chatDisplay.Bottom)
                     {
-                        // Draw message background for user messages - darker shade
+                        // Draw message background
+                        var msgBounds = new RectangleF(
+                            _chatDisplay.X + PADDING,
+                            y,
+                            availableWidth,
+                            height - 5
+                        );
+
                         if (isUser)
                         {
-                            var msgBounds = new RectangleF(
-                                _chatDisplay.X + PADDING,
-                                y,
-                                availableWidth,
-                                height - 5
-                            );
+                            // User message - darker shade
                             graphics.FillRectangle(new SolidBrush(Color.FromArgb(60, 60, 65)), msgBounds);
                         }
+                        else if (isSystem)
+                        {
+                            // System message - different shade
+                            graphics.FillRectangle(new SolidBrush(Color.FromArgb(50, 50, 55)), msgBounds);
+                        }
 
-                        string prefix = message.Role == "user" ? "You: " : "AI: ";
+                        string prefix = message.Role == "user" ? "You: " : 
+                                      message.Role == "system" ? "System: " : "AI: ";
                         string text = prefix + message.Content;
                         
-                        // Draw the text in light color for better contrast
-                        graphics.DrawString(text, font, new SolidBrush(Color.FromArgb(230, 230, 230)),
+                        // Draw the text with appropriate color
+                        var textColor = isSystem ? Color.FromArgb(180, 180, 180) : Color.FromArgb(230, 230, 230);
+                        graphics.DrawString(text, font, new SolidBrush(textColor),
                             new RectangleF(_chatDisplay.X + PADDING, y, availableWidth, height - 5),
                             format);
                     }
