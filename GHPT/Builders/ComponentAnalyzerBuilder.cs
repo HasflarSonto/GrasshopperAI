@@ -37,14 +37,24 @@ namespace GHPT.Builders
                     };
                 }
 
-                // Parse the JSON response
-                var result = JsonSerializer.Deserialize<AnalysisResult>(response);
-                if (result == null)
+                // Create a new AnalysisResult with the natural language response
+                return new AnalysisResult
                 {
-                    throw new Exception("Failed to parse the AI response");
-                }
-
-                return result;
+                    IsTooComplex = false,
+                    Error = null,
+                    Analysis = new Analysis
+                    {
+                        KeyComponents = new[] { response }, // Store the natural language response
+                        SimilarExample = null,
+                        RequiredParameters = new string[0]
+                    },
+                    Outline = new Outline
+                    {
+                        Steps = new Step[0],
+                        Connections = new Connection[0]
+                    },
+                    BestPractices = new string[0]
+                };
             }
             catch (Exception ex)
             {

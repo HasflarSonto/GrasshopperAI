@@ -457,6 +457,7 @@ namespace GHPT.Components
         private float _scrollOffset = 0;  // Track scroll position
         private float _maxScroll = 0;     // Maximum scroll value
         private bool _isScrolling = false; // Track if we're currently scrolling
+        private bool _autoScroll = true;  // Track if we should auto-scroll
 
         private GHPT_Chat ChatOwner => (GHPT_Chat)Owner;
 
@@ -520,9 +521,11 @@ namespace GHPT.Components
                 }
                 else if (_scrollbar.Contains(e.CanvasLocation))
                 {
+                    _isScrolling = true;
                     // Calculate scroll position based on click position
                     float scrollRatio = (e.CanvasLocation.Y - _scrollbar.Y) / _scrollbar.Height;
                     _scrollOffset = Math.Max(0, Math.Min(_maxScroll, scrollRatio * _maxScroll));
+                    _autoScroll = false; // Disable auto-scroll when user manually scrolls
                     sender.Refresh();
                     return GH_ObjectResponse.Handled;
                 }
@@ -535,7 +538,7 @@ namespace GHPT.Components
             bool wasHovering = ChatOwner._isHoveringButton;
             ChatOwner._isHoveringButton = _sendButton.Contains(e.CanvasLocation);
             
-            if (e.Button == System.Windows.Forms.MouseButtons.Left && _scrollbar.Contains(e.CanvasLocation))
+            if (_isScrolling && _scrollbar.Contains(e.CanvasLocation))
             {
                 // Calculate scroll position based on mouse Y position
                 float scrollRatio = (e.CanvasLocation.Y - _scrollbar.Y) / _scrollbar.Height;
@@ -552,6 +555,7 @@ namespace GHPT.Components
 
         public override GH_ObjectResponse RespondToMouseUp(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
+            _isScrolling = false;
             return base.RespondToMouseUp(sender, e);
         }
 
@@ -611,10 +615,14 @@ namespace GHPT.Components
                 // Update max scroll value
                 _maxScroll = Math.Max(0, totalHeight - _chatDisplay.Height);
 
+                // If auto-scroll is enabled, scroll to bottom
+                if (_autoScroll)
+                {
+                    _scrollOffset = _maxScroll;
+                }
+
                 // Calculate starting Y position with scroll offset
-                float y = _chatDisplay.Bottom - totalHeight + _scrollOffset;
-                if (y > _chatDisplay.Y)
-                    y = _chatDisplay.Y + PADDING;
+                float y = _chatDisplay.Y + PADDING - _scrollOffset;
 
                 // Create clipping region for chat display
                 graphics.SetClip(_chatDisplay);

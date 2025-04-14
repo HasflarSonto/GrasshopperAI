@@ -22,7 +22,7 @@ A complex request is one that:
 
 User Request: {userRequest}
 
-Respond with exactly one word: 'simple' or 'complex'";
+Respond with exactly one word, either 'simple' or 'complex', with no additional text or formatting.";
         }
     }
 } 

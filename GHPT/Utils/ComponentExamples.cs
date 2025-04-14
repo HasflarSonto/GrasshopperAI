@@ -7,142 +7,353 @@ namespace GHPT.Utils
         public const string SimpleExamples = @"# Simple Grasshopper Examples
 
 ## Basic Geometry
-### Creating Points
-```python
-# Create a point at (0,0,0)
-point = Point3d(0,0,0)
-
-# Create multiple points
-points = [Point3d(x,0,0) for x in range(10)]
+### Creating a Box
+```json
+{
+    ""Advice"": ""Remember to properly define the box dimensions using the number slider or the point's coordinates"",
+    ""Additions"": [
+        {
+            ""Name"": ""Box 2Pt"",
+            ""Id"": 1
+        },
+        {
+            ""Name"": ""Point"",
+            ""Id"": 2,
+            ""value"": ""{0,0,0}""
+        },
+        {
+            ""Name"": ""Point"",
+            ""Id"": 3,
+            ""value"": ""{10,10,10}""
+        }
+    ],
+    ""Connections"": [
+        {
+            ""To"": {
+                ""Id"": 1,
+                ""ParameterName"": ""A""
+            },
+            ""From"": {
+                ""Id"": 2,
+                ""ParameterName"": ""Point""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 1,
+                ""ParameterName"": ""B""
+            },
+            ""From"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Point""
+            }
+        }
+    ]
+}
 ```
 
-### Creating Lines
-```python
-# Create a line between two points
-start = Point3d(0,0,0)
-end = Point3d(10,0,0)
-line = Line(start, end)
-
-# Create multiple lines
-lines = [Line(Point3d(x,0,0), Point3d(x,10,0)) for x in range(10)]
+### Creating a Circle
+```json
+{
+    ""Advice"": ""Use appropriate radius and plane settings for the circle"",
+    ""Additions"": [
+        {
+            ""Name"": ""Circle CNR"",
+            ""Id"": 1
+        },
+        {
+            ""Name"": ""Plane"",
+            ""Id"": 2,
+            ""value"": ""{0,0,0},{1,0,0},{0,1,0}""
+        },
+        {
+            ""Name"": ""Number Slider"",
+            ""Id"": 3,
+            ""value"": ""0..5..10""
+        }
+    ],
+    ""Connections"": [
+        {
+            ""To"": {
+                ""Id"": 1,
+                ""ParameterName"": ""Plane""
+            },
+            ""From"": {
+                ""Id"": 2,
+                ""ParameterName"": ""Plane""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 1,
+                ""ParameterName"": ""Radius""
+            },
+            ""From"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Number""
+            }
+        }
+    ]
+}
 ```
 
-## Basic Transformations
-### Moving Geometry
-```python
-# Move a point
-point = Point3d(0,0,0)
-vector = Vector3d(10,0,0)
-moved_point = point + vector
-
-# Move multiple points
-points = [Point3d(x,0,0) for x in range(10)]
-moved_points = [p + vector for p in points]
-```
-
-### Rotating Geometry
-```python
-# Rotate a point around Z axis
-point = Point3d(10,0,0)
-angle = 45 # degrees
-rotated_point = point.Rotate(angle, Vector3d.ZAxis, Point3d.Origin)
-```
-
-## Basic Data Operations
-### Creating Series
-```python
-# Create a series of numbers
-numbers = [x for x in range(10)]
-
-# Create a series with step
-numbers = [x * 0.5 for x in range(10)]
-```
-
-### Basic Math Operations
-```python
-# Add two numbers
-a = 5
-b = 3
-result = a + b
-
-# Multiply two numbers
-result = a * b
+### Creating a Line
+```json
+{
+    ""Advice"": ""Define start and end points for the line"",
+    ""Additions"": [
+        {
+            ""Name"": ""Line"",
+            ""Id"": 1
+        },
+        {
+            ""Name"": ""Point"",
+            ""Id"": 2,
+            ""value"": ""{0,0,0}""
+        },
+        {
+            ""Name"": ""Point"",
+            ""Id"": 3,
+            ""value"": ""{10,10,10}""
+        }
+    ],
+    ""Connections"": [
+        {
+            ""To"": {
+                ""Id"": 1,
+                ""ParameterName"": ""Start Point""
+            },
+            ""From"": {
+                ""Id"": 2,
+                ""ParameterName"": ""Point""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 1,
+                ""ParameterName"": ""End Point""
+            },
+            ""From"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Point""
+            }
+        }
+    ]
+}
 ```";
 
         public const string ComplexExamples = @"# Complex Grasshopper Examples
 
-## Advanced Geometry
-### Creating Surfaces
-```python
-# Create a surface from points
-points = [Point3d(x,y,0) for x in range(10) for y in range(10)]
-surface = NurbsSurface.CreateFromPoints(points, 10, 10, 3, 3)
-
-# Create a lofted surface
-curves = [Line(Point3d(x,0,0), Point3d(x,10,0)) for x in range(10)]
-surface = Brep.CreateFromLoft(curves, Point3d.Origin, Point3d.Origin, LoftType.Normal, False)
+## Creating a Cup Shape
+```json
+{
+    ""Advice"": ""Remember to properly define the cup's dimensions using the number slider"",
+    ""Additions"": [
+        {
+            ""Name"": ""Circle CNR"",
+            ""Id"": 1
+        },
+        {
+            ""Name"": ""Move"",
+            ""Id"": 2
+        },
+        {
+            ""Name"": ""Loft"",
+            ""Id"": 3
+        }
+    ],
+    ""Connections"": [
+        {
+            ""To"": {
+                ""Id"": 2,
+                ""ParameterName"": ""Geometry""
+            },
+            ""From"": {
+                ""Id"": 1,
+                ""ParameterName"": ""Circle""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Curves""
+            },
+            ""From"": {
+                ""Id"": 1,
+                ""ParameterName"": ""Circle""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Curves""
+            },
+            ""From"": {
+                ""Id"": 2,
+                ""ParameterName"": ""Geometry""
+            }
+        }
+    ]
+}
 ```
 
-### Creating Complex Curves
-```python
-# Create a NURBS curve
-points = [Point3d(x, math.sin(x), 0) for x in range(10)]
-curve = NurbsCurve.CreateFromPoints(points, 3)
-
-# Create a polyline with specific points
-points = [Point3d(x, x*x, 0) for x in range(10)]
-polyline = Polyline(points)
-```
-
-## Advanced Transformations
-### Multiple Transformations
-```python
-# Move and rotate a point
-point = Point3d(10,0,0)
-vector = Vector3d(0,10,0)
-angle = 45
-
-# First move
-moved_point = point + vector
-# Then rotate
-rotated_point = moved_point.Rotate(angle, Vector3d.ZAxis, Point3d.Origin)
-```
-
-### Scaling with Center
-```python
-# Scale geometry around a center point
-point = Point3d(10,0,0)
-center = Point3d(5,0,0)
-scale = 2.0
-
-# Scale relative to center
-scaled_point = center + (point - center) * scale
-```
-
-## Advanced Data Operations
-### Data Trees
-```python
-# Create a data tree
-tree = DataTree<Point3d>()
-for i in range(10):
-    path = GH_Path(i)
-    points = [Point3d(x,i,0) for x in range(10)]
-    tree.AddRange(points, path)
-
-# Access data tree
-for i in range(tree.BranchCount):
-    points = tree.Branch(i)
-    # Process points
-```
-
-### Conditional Operations
-```python
-# Filter points based on condition
-points = [Point3d(x,0,0) for x in range(10)]
-filtered_points = [p for p in points if p.X > 5]
-
-# Transform points based on condition
-transformed_points = [p + Vector3d(0,10,0) if p.X > 5 else p for p in points]
+## Creating a Twisty Skyscraper
+```json
+{
+    ""Advice"": ""Make sure to use reasonable inputs or the skyscraper will look weird"",
+    ""Additions"": [
+        {
+            ""Name"": ""Rectangle"",
+            ""Id"": 1
+        },
+        {
+            ""Name"": ""Number Slider"",
+            ""Id"": 2,
+            ""Value"": ""0..50..100""
+        },
+        {
+            ""Name"": ""Unit Z"",
+            ""Id"": 3
+        },
+        {
+            ""Name"": ""Extrusion"",
+            ""Id"": 4
+        },
+        {
+            ""Name"": ""Number Slider"",
+            ""Id"": 5,
+            ""Value"": ""0..90..360""
+        },
+        {
+            ""Name"": ""Line"",
+            ""Id"": 6
+        },
+        {
+            ""Name"": ""Point"",
+            ""Id"": 7,
+            ""value"": ""{0,0,0}""
+        },
+        {
+            ""Name"": ""Point"",
+            ""Id"": 8,
+            ""value"": ""{0,0,250}""
+        },
+        {
+            ""Name"": ""Twist"",
+            ""Id"": 9
+        },
+        {
+            ""Name"": ""Solid Union"",
+            ""Id"": 10
+        },
+        {
+            ""Name"": ""Brep Join"",
+            ""Id"": 11
+        }
+    ],
+    ""Connections"": [
+        {
+            ""To"": {
+                ""Id"": 4,
+                ""ParameterName"": ""Base""
+            },
+            ""From"": {
+                ""Id"": 1,
+                ""ParameterName"": ""Rectangle""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Factor""
+            },
+            ""From"": {
+                ""Id"": 2,
+                ""ParameterName"": ""Number""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 9,
+                ""ParameterName"": ""Angle""
+            },
+            ""From"": {
+                ""Id"": 5,
+                ""ParameterName"": ""Number""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 4,
+                ""ParameterName"": ""Direction""
+            },
+            ""From"": {
+                ""Id"": 3,
+                ""ParameterName"": ""Unit vector""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 9,
+                ""ParameterName"": ""Geometry""
+            },
+            ""From"": {
+                ""Id"": 4,
+                ""ParameterName"": ""Extrusion""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 6,
+                ""ParameterName"": ""Start Point""
+            },
+            ""From"": {
+                ""Id"": 7,
+                ""ParameterName"": ""Point""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 6,
+                ""ParameterName"": ""End Point""
+            },
+            ""From"": {
+                ""Id"": 8,
+                ""ParameterName"": ""Point""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 10,
+                ""ParameterName"": ""Breps""
+            },
+            ""From"": {
+                ""Id"": 9,
+                ""ParameterName"": ""Geometry""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 11,
+                ""ParameterName"": ""Breps""
+            },
+            ""From"": {
+                ""Id"": 10,
+                ""ParameterName"": ""Result""
+            }
+        },
+        {
+            ""To"": {
+                ""Id"": 9,
+                ""ParameterName"": ""Axis""
+            },
+            ""From"": {
+                ""Id"": 6,
+                ""ParameterName"": ""Line""
+            }
+        }
+    ]
+}
 ```";
 
         public static string GetSimpleExamples()

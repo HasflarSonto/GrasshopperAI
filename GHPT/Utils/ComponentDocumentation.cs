@@ -4,240 +4,230 @@ namespace GHPT.Utils
 {
     public static class ComponentDocumentation
     {
-        public const string Documentation = @"# Grasshopper Component Documentation
+        public const string Documentation = @"
+# Grasshopper Component Documentation
 
 ## Geometry Components
 
-### Points
-#### Construct Point
-- Description: Creates a point from coordinates
-- Inputs:
-  - Point: {x,y,z} coordinates
+### Point
+- Category: Params/Geometry
+- Description: Defines a point in 3D space using X, Y, and Z coordinates
+- Inputs: None
 - Outputs:
-  - Point: The constructed point
-- Validation Rules:
-  - Coordinates must be valid numbers
-  - Output can connect to any point input
+  - Point (Point3D): The defined point
+- Value Format: {x,y,z}
+- Example: {0,0,0}
 
-#### Point List
-- Description: Creates a list of points
-- Inputs:
-  - Points: Multiple points to combine
+### Plane
+- Category: Params/Geometry
+- Description: Defines a plane in 3D space using an origin point and a Z-axis vector
+- Inputs: None
 - Outputs:
-  - Points: Combined list of points
-- Validation Rules:
-  - All inputs must be points
-  - Output can connect to any point list input
+  - Plane (Plane): The defined plane
+- Value Format: {origin_x,origin_y,origin_z},{z_x,z_y,z_z}
+- Example: {6.07,-14.22,0.00},{-0.32,-0.56,-0.77}
+- Notes: 
+  - The first set of coordinates defines the origin point of the plane
+  - The second set of coordinates defines the Z-axis vector direction
+  - The X and Y axes are automatically calculated based on the Z-axis vector
 
-#### Point XYZ
-- Description: Creates a point directly from X, Y, Z coordinates
+### Line
+- Category: Curve/Primitive
+- Description: Creates a straight line segment between two points
 - Inputs:
-  - X: X coordinate
-  - Y: Y coordinate
-  - Z: Z coordinate
+  - A (Point3D): Start point of the line
+  - B (Point3D): End point of the line
 - Outputs:
-  - Point: The constructed point
-- Validation Rules:
-  - All coordinates must be numbers
-  - Output can connect to any point input
+  - Line (Curve): The resulting line segment
+- Value Format: {x1,y1,z1} to {x2,y2,z2}
+- Example: {0,0,0} to {1,1,1}
 
-### Curves
-#### Interpolate
-- Description: Creates a smooth curve that passes through all points
+### Circle
+- Category: Curve/Primitive
+- Description: Creates a circle defined by a plane and radius
 - Inputs:
-  - Points: List of points to interpolate through
-  - Degree: Degree of the curve (default: 3)
+  - P (Plane): Base plane for the circle
+  - R (Number): Radius of the circle
 - Outputs:
-  - Curve: Interpolated curve
-- Validation Rules:
-  - Requires at least 2 points
-  - Points must be in desired order
-  - Output can connect to any curve input
+  - Circle (Curve): The resulting circle
+- Value Format: Plane: {origin, x-axis, y-axis}, Radius: number
+- Example: Plane: {0,0,0,1,0,0,0,1,0}, Radius: 1.0
 
-#### Nurbs Curve
-- Description: Creates a NURBS curve through points
+### Rectangle
+- Category: Curve/Primitive
+- Description: Creates a rectangle on a given plane
 - Inputs:
-  - Points: Control points for the curve
-  - Degree: Degree of the curve
-  - Knots: Knot vector (optional)
+  - P (Plane): Base plane of the rectangle
+  - X (Domain): Length in X direction
+  - Y (Domain): Length in Y direction
+  - R (Number): Corner radius (optional)
 - Outputs:
-  - Curve: NURBS curve
-- Validation Rules:
-  - Requires at least degree+1 points
-  - Output can connect to any curve input
+  - Rectangle (Curve): The resulting rectangle
+  - Length (Number): The perimeter length
+- Value Format: Plane: {origin, x-axis, y-axis}, X: {min,max}, Y: {min,max}, R: number
+- Example: Plane: {0,0,0,1,0,0,0,1,0}, X: {0,1}, Y: {0,1}, R: 0
 
-#### Polyline
-- Description: Creates a polyline connecting points in order
+### Box 2Pt
+- Category: Surface/Primitive
+- Description: Creates a box defined by two opposite corner points
 - Inputs:
-  - Points: Points to connect
+  - A (Point3D): First corner point
+  - B (Point3D): Opposite corner point
 - Outputs:
-  - Curve: Polyline curve
-- Validation Rules:
-  - Requires at least 2 points
-  - Points must be in desired order
-  - Output can connect to any curve input
+  - Box (Brep): The resulting box
+- Value Format: {x1,y1,z1} to {x2,y2,z2}
+- Example: {0,0,0} to {1,1,1}
 
-#### Circle CNR
-- Description: Creates a circle from center, normal, and radius
-- Inputs:
-  - Center: Point for circle center
-  - Normal: Vector for circle normal
-  - Radius: Circle radius
-- Outputs:
-  - Circle: Resulting circle
-- Validation Rules:
-  - Center must be a point
-  - Normal must be a vector
-  - Radius must be a number
-  - Output can only connect to curve inputs
+## Curve Components
 
-#### Line
-- Description: Creates a line between two points
+### Interpolate
+- Category: Curve/Spline
+- Description: Creates a curve that passes through a set of points
 - Inputs:
-  - Start Point: Starting point of line
-  - End Point: Ending point of line
+  - V (Point3D): List of points to interpolate
+  - D (Integer): Degree of the curve
+  - P (Boolean): Periodic curve (optional)
+  - K (Integer): Knot style (optional)
 - Outputs:
-  - Line: Resulting line
-- Validation Rules:
-  - Both points must be valid
-  - Output can only connect to curve inputs
+  - Curve (Curve): The interpolated curve
+  - Length (Number): The curve length
+  - Domain (Domain): The parameter domain
+- Value Format: Points: [{x1,y1,z1}, {x2,y2,z2}, ...], Degree: integer
+- Example: Points: [{0,0,0}, {1,1,0}, {2,0,0}], Degree: 3
 
-### Surfaces
-#### Loft
-- Description: Creates a surface between curves
-- Inputs:
-  - Curves: Multiple curves to loft between
-- Outputs:
-  - Surface: Resulting lofted surface
-- Validation Rules:
-  - Requires at least 2 curves as input
-  - All curves must be in the same plane
-  - Curves must be compatible for lofting
-  - Output can only connect to surface inputs
+## Surface Components
 
-#### Extrude
-- Description: Extrudes a curve along a direction
+### Surface From Points
+- Category: Surface/Freeform
+- Description: Creates a surface from a grid of points
 - Inputs:
-  - Base: Curve to extrude
-  - Direction: Vector for extrusion direction
+  - P (Point3D): Grid of points
+  - U (Integer): Number of points in U direction
+  - I (Boolean): Interpolate points (optional)
 - Outputs:
-  - Surface: Resulting extruded surface
-- Validation Rules:
-  - Base must be a curve
-  - Direction must be a vector
-  - Output can only connect to surface inputs
+  - Surface (Surface): The resulting surface
+- Value Format: Points: [{x1,y1,z1}, {x2,y2,z2}, ...], U: integer
+- Example: Points: [{0,0,0}, {1,0,0}, {0,1,0}, {1,1,0}], U: 2
+
+### Loft
+- Category: Surface/Freeform
+- Description: Creates a surface through a series of curves
+- Inputs:
+  - C (Curve): List of section curves
+  - O (Loft Options): Loft options (optional)
+- Outputs:
+  - Loft (Brep): The resulting surface
+- Value Format: Curves: [curve1, curve2, ...]
+- Example: Curves: [circle1, circle2, circle3]
+
+## Solid Operations
+
+### Solid Union
+- Category: Intersect/Boolean
+- Description: Combines multiple solids into one
+- Inputs:
+  - B (Brep): List of solids to union
+- Outputs:
+  - Result (Brep): The combined solid
+- Value Format: Breps: [brep1, brep2, ...]
+- Example: Breps: [box1, box2]
+
+### Solid Difference
+- Category: Intersect/Boolean
+- Description: Subtracts one solid from another
+- Inputs:
+  - A (Brep): Base solid
+  - B (Brep): Solid to subtract
+- Outputs:
+  - Result (Brep): The resulting solid
+- Value Format: Base: brep1, Subtract: brep2
+- Example: Base: box1, Subtract: sphere1
 
 ## Transform Components
 
 ### Move
+- Category: Transform/Euclidean
 - Description: Moves geometry along a vector
 - Inputs:
-  - Geometry: Geometry to move
-  - Motion: Vector for movement direction
-  - Distance: Distance to move
+  - G (Geometry): Geometry to move
+  - T (Vector): Translation vector
 - Outputs:
-  - Geometry: Moved geometry
-- Validation Rules:
-  - Geometry must be valid
-  - Motion must be a vector
-  - Distance must be a number
+  - Geometry (Geometry): The moved geometry
+  - Transform (Transform): The transformation
+- Value Format: Geometry: geometry, Vector: {x,y,z}
+- Example: Geometry: box1, Vector: {1,0,0}
 
 ### Rotate
+- Category: Transform/Euclidean
 - Description: Rotates geometry around an axis
 - Inputs:
-  - Geometry: Geometry to rotate
-  - Axis: Line to rotate around
-  - Angle: Angle in degrees
+  - G (Geometry): Geometry to rotate
+  - A (Number): Rotation angle
+  - P (Plane): Rotation plane (optional)
 - Outputs:
-  - Geometry: Rotated geometry
-- Validation Rules:
-  - Geometry must be valid
-  - Axis must be a line
-  - Angle must be a number
+  - Geometry (Geometry): The rotated geometry
+  - Transform (Transform): The transformation
+- Value Format: Geometry: geometry, Angle: number, Plane: {origin, x-axis, y-axis}
+- Example: Geometry: box1, Angle: 45, Plane: {0,0,0,1,0,0,0,1,0}
 
-### Scale
-- Description: Scales geometry uniformly or non-uniformly
+## Vector Components
+
+### Vector XYZ
+- Category: Vector/Vector
+- Description: Creates a vector from X, Y, Z components
 - Inputs:
-  - Geometry: Geometry to scale
-  - Center: Center point of scaling
-  - Factor: Scale factor
+  - X (Number): X component
+  - Y (Number): Y component
+  - Z (Number): Z component
 - Outputs:
-  - Geometry: Scaled geometry
-- Validation Rules:
-  - Geometry must be valid
-  - Center must be a point
-  - Factor must be a number
+  - Vector (Vector): The resulting vector
+  - Length (Number): The vector length
+- Value Format: {x,y,z}
+- Example: {1,0,0}
 
-## Data Components
-
-### Series
-- Description: Creates a series of numbers
-- Inputs:
-  - Start: Starting value
-  - Step: Step size
-  - Count: Number of values
-- Outputs:
-  - Series: List of numbers
-- Validation Rules:
-  - All inputs must be numbers
-  - Count must be positive
-  - Output can connect to any numeric input
-
-### Cross Reference
-- Description: Creates combinations of two lists
-- Inputs:
-  - A: First list
-  - B: Second list
-- Outputs:
-  - Result: All combinations of A and B
-- Validation Rules:
-  - Both inputs must be lists
-  - Output can connect to any list input
+## Utility Components
 
 ### Number Slider
-- Description: Creates a numeric input with min/max/current values
+- Category: Params/Input
+- Description: A slider for numeric input
 - Inputs: None
 - Outputs:
-  - number: The current value of the slider
-- Validation Rules:
-  - Output can only connect to numeric inputs
-  - Value must be within min/max range
+  - Value (Number): The slider value
+- Value Format: number
+- Example: 0.5
+
+### Panel
+- Category: Params/Input
+- Description: Displays text or data
+- Inputs: None
+- Outputs:
+  - Content (Text): The panel content
+- Value Format: text
+- Example: ""Hello World""
 
 ## Boolean Components
 
-### Addition
-- Description: Adds two numbers together
-- Inputs:
-  - A: First number to add
-  - B: Second number to add
+### Boolean Toggle
+- Category: Params/Input
+- Description: A toggle switch for boolean values
+- Inputs: None
 - Outputs:
-  - Result: Sum of A and B
-- Validation Rules:
-  - Both inputs must be numeric
-  - Output can only connect to numeric inputs
+  - Value (Boolean): The toggle state
+- Value Format: true/false
+- Example: true
 
-### Multiplication
-- Description: Multiplies two numbers
+### Stream Filter
+- Category: Sets/Tree
+- Description: Routes data based on a condition
 - Inputs:
-  - A: First number
-  - B: Second number
+  - G (Integer): Gate value
+  - Stream 0 (Generic): First stream
+  - Stream 1 (Generic): Second stream
 - Outputs:
-  - Result: Product of A and B
-- Validation Rules:
-  - Both inputs must be numeric
-  - Output can only connect to numeric inputs
-
-### Division
-- Description: Divides two numbers
-- Inputs:
-  - A: First number
-  - B: Second number
-- Outputs:
-  - Result: Quotient of A and B
-- Validation Rules:
-  - Both inputs must be numeric
-  - B cannot be zero
-  - Output can only connect to numeric inputs";
+  - Stream (Generic): Selected stream
+- Value Format: Gate: integer, Streams: [stream1, stream2]
+- Example: Gate: 0, Streams: [true, false]
+";
 
         public static string GetDocumentation()
         {

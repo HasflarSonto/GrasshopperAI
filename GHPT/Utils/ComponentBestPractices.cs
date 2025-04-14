@@ -6,108 +6,128 @@ namespace GHPT.Utils
     {
         public const string BestPractices = @"# Grasshopper Component Best Practices
 
-## Component Naming Conventions
-1. Use exact component names as they appear in Grasshopper
-2. Common component aliases:
-   - ""Circle"" -> ""Circle CNR""
-   - ""Extrusion"" -> ""Extrude""
-   - ""Text Panel"" -> ""Panel""
-   - ""Number"" -> ""Number Slider""
-   - ""Slider"" -> ""Number Slider""
+## Core Principles
+1. **Foundation with Points and Planes**
+   - Begin all geometry definitions using Point and Plane components
+   - Points provide precise locations in 3D space
+   - Planes offer orientation and serve as local coordinate systems
 
-## Parameter Formatting Rules
-1. Point values must be formatted as ""{x,y,z}""
-2. Number Slider ranges must be formatted as ""min..value..max""
-3. Series values must be formatted as ""start..step..end""
-4. Boolean values must be ""true"" or ""false""
-5. Text values must be enclosed in quotes
+2. **Simplicity and Specificity**
+   - Use the most appropriate components for each task
+   - Avoid unnecessary complexity in component chains
 
-## Connection Validation Rules
-1. Input/Output Type Compatibility:
-   - Number -> Number
-   - Point -> Point
-   - Curve -> Curve
-   - Surface -> Surface
-   - Boolean -> Boolean
-   - Text -> Text
+3. **Data Type Consistency**
+   - Ensure inputs and outputs maintain consistent data types
+   - Prevent errors by matching data types across connections
 
-2. Common Parameter Names:
-   - Input: ""input"", ""geometry"", ""curve"", ""point"", ""number"", ""value""
-   - Output: ""output"", ""result"", ""geometry"", ""curve"", ""point"", ""number""
+4. **Input Awareness**
+   - If a component has required inputs, ensure that they are given.
+   - Often times circle or retangle components will require planes or points as input.
+   - You muct construct these inputs or the component will throw an error.
 
-3. Required Parameters:
-   - Circle CNR: Center, Normal, Radius
-   - Extrude: Base, Direction
-   - Loft: Curves
-   - Construct Point: Point
-   - Line: Start Point, End Point
+5. **Logical Organization**
+   - Group related components together
+   - Maintain a clear, readable layout on the canvas
 
-## Error Handling Guidelines
-1. Component Validation:
-   - Verify component exists in Grasshopper
-   - Check all required parameters are provided
-   - Ensure parameter types match expected values
+6. **Use of Defaults and Validation**
+   - Leverage default parameter values where appropriate
+   - Validate inputs before connecting components
 
-2. Connection Validation:
-   - Check for circular dependencies
-   - Verify input/output type compatibility
+## Canvas Layout and Organization
+1. **Component Placement**
+   - Position input components on the left
+   - Place processing components in the center
+   - Position output components on the right
+   - Align related components vertically
+
+2. **Spacing and Boundaries**
+   - Maintain consistent spacing (100 units) between components
+   - Keep components within visible canvas area
+   - Use positive X and Y coordinates (0-1000 range)
+
+3. **Connection Routing**
+   - Draw wires as straight as possible
+   - Avoid overlaps and crossings
+   - Group related connections together
+   - Minimize wire lengths
+
+## Naming Conventions and Parameter Formatting
+1. **Component Naming**
+   - Use exact component names as they appear in the doumentation
+
+2. **Parameter Formatting**
+   - Points: {x,y,z}
+   - Number Slider ranges: min..value..max
+   - Series values: start..step..end
+   - Boolean values: true or false
+   - Text values: ""example""
+
+## Connection Validation
+1. **Type Compatibility**
+   - Ensure matching data types across connections
+   - Example: Number → Number, Point → Point
+
+2. **Parameter Naming**
+   - Use descriptive names for inputs (e.g., ""input"", ""geometry"")
+   - Use clear names for outputs (e.g., ""output"", ""result"")
+
+3. **Required Parameters**
+   - Connect all mandatory inputs
+   - Validate connections before execution
+
+## Common Workflows
+1. **Geometry Creation**
+   - Basic Shapes:
+     - Use Point components for specific locations
+     - Construct lines, circles, rectangles, and boxes
+   - Complex Forms:
+     - Use Interpolate Curve, Loft, Surface from Points
+     - Reference points and planes for positioning
+
+2. **Transformations**
+   - Basic Operations:
+     - Move, Rotate, and Scale components
+     - Use planes to define axes and centers
+   - Advanced Techniques:
+     - Orient, Morph, and Twist components
+     - Use planes for orientation guidance
+
+3. **Boolean Operations**
+   - Solid Manipulations:
+     - Solid Union, Difference, and Intersection
+     - Ensure clean, properly aligned geometries
+   - Surface Operations:
+     - Surface Split, Trim, and Join
+     - Maintain planarity and continuity
+
+## Error Handling and Validation
+1. **Component Checks**
+   - Verify component existence and configuration
    - Ensure all required inputs are connected
-   - Validate number of inputs/outputs
+   - Validate input types
 
-3. Parameter Validation:
-   - Verify numeric ranges are valid
-   - Check point coordinates are valid
-   - Ensure text values are properly formatted
-   - Validate boolean values
-
-## Common Patterns
-1. Data Flow:
-   - Source -> Transform -> Output
-   - Input -> Process -> Result
-   - Geometry -> Operation -> Geometry
-
-2. Component Grouping:
-   - Input components first
-   - Processing components second
-   - Output components last
-
-3. Parameter Organization:
-   - Required parameters first
-   - Optional parameters second
-   - Default values when appropriate
-
-## Example Patterns
-1. Grid Creation:
-   - Series -> Cross Reference -> Construct Point
-   - Number Slider -> Series -> Cross Reference
-
-2. Surface Creation:
-   - Curve -> Loft -> Surface
-   - Point -> Curve -> Surface
-
-3. Transformation:
-   - Geometry -> Transform -> Result
-   - Input -> Operation -> Output
+2. **Connection Integrity**
+   - Avoid circular dependencies
+   - Confirm logical data flow
+   - Validate parameter ranges and formats
 
 ## Common Pitfalls
-1. Missing Required Parameters:
-   - Circle without Center or Normal
-   - Extrude without Direction
-   - Loft without Curves
+1. **Missing Inputs**
+   - Connect all required parameters
+   - Avoid component errors and unexpected results
 
-2. Type Mismatches:
-   - Number connected to Point
-   - Curve connected to Surface
-   - Text connected to Number
+2. **Type Mismatches**
+   - Prevent incompatible data type connections
+   - Example: Don't connect numbers to point inputs
 
-3. Invalid Connections:
-   - Circular dependencies
-   - Missing required inputs
-   - Incorrect parameter types";
+3. **Invalid Geometry**
+   - Ensure watertight geometry for boolean operations
+   - Verify proper geometry definition
+   - Check for incomplete outcomes";
 
         public static string GetBestPractices()
         {
             return BestPractices;
         }
     }
-} 
+}
