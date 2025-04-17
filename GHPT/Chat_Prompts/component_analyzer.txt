@@ -53,15 +53,6 @@ You have access to the following resources:
    - For complex requests: Create a detailed analysis and plan
 
 ## Response Format
-For simple requests:
-{
-    "type": "simple",
-    "component": {
-        "name": "component_name",
-        "parameters": ["param1=value1"],
-        "connections": ["from->to"]
-    }
-}
 
 For complex requests:
 {

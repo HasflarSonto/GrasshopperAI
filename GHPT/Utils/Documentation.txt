@@ -1,0 +1,309 @@
+Geometry Creation Components
+Construct Point
+Category: Vector/Point
+Description: Constructs a 3D point from individual X, Y, and Z coordinates.
+Inputs:
+X (Number): X-coordinate value (Optional, default 0.0).
+Y (Number): Y-coordinate value (Optional, default 0.0).
+Z (Number): Z-coordinate value (Optional, default 0.0).
+Outputs:
+Point (Point3D): The resulting point in 3D space.
+Value Format: (X, Y, Z) – e.g. (0.0, 0.0, 0.0) for the origin.
+Line
+Category: Curve/Primitive
+Description: Creates a straight line segment between two point endpoints.
+Inputs:
+Start Point (A) (Point3D): Line start point (Required).
+End Point (B) (Point3D): Line end point (Required).
+Outputs:
+Line (Curve): The line segment connecting A to B.
+Circle
+Category: Curve/Primitive
+Description: Creates a circle defined by a center plane and radius.
+Inputs:
+Plane (P) (Plane): Base plane for the circle’s center and orientation (Optional, default World XY plane).
+Radius (R) (Number): Radius of the circle (Optional, default 1.0).
+Outputs:
+Circle (Curve): The resulting circle curve.
+Rectangle
+Category: Curve/Primitive
+Description: Creates a rectangle on a given plane, with optional filleted (rounded) corners.
+Inputs:
+Plane (P) (Plane): Base plane of the rectangle (Optional, default World XY plane).
+X Size (X) (Domain): Length interval in the plane’s X direction (Optional, default 0 to 1.0).
+Y Size (Y) (Domain): Length interval in the plane’s Y direction (Optional, default 0 to 1.0).
+Radius (R) (Number): Corner fillet radius (Optional, default 0 for sharp corners).
+Outputs:
+Rectangle (Curve): The resulting rectangle polyline (closed curve).
+Length (Number): The perimeter length of the rectangle.
+Polygon
+Category: Curve/Primitive
+Description: Creates a regular polygon centered on a plane, with a given number of sides and radius. Supports optional rounded corners.
+Inputs:
+Plane (P) (Plane): Base plane of the polygon (Optional, default World XY plane).
+Radius (R) (Number): Distance from center to each vertex (polygon “radius”) (Required).
+Segments (S) (Integer): Number of sides (Required, e.g. 6 for hexagon).
+Fillet Radius (Rf) (Number): Corner fillet radius for rounded edges (Optional, default 0).
+Outputs:
+Polygon (Curve): The resulting closed polygon curve.
+Length (Number): The perimeter length of the polygon.
+Arc
+Category: Curve/Primitive
+Description: Creates an arc defined by a base plane, radius, and angle sweep.
+Inputs:
+Plane (P) (Plane): Base plane of the arc (orientation and center) (Optional, default World XY plane).
+Radius (R) (Number): Radius of the arc (Required).
+Angle (A) (Domain): Angle domain in radians for the arc sweep (Required, e.g. 0 to π for a half-circle arc).
+Outputs:
+Arc (Curve): The resulting arc curve.
+Length (Number): The arc length.
+Box 2Pt
+Category: Surface/Primitive
+Description: Creates a rectangular box defined by two opposite corner points.
+Inputs:
+Point A (A) (Point3D): First corner of the box (Required).
+Point B (B) (Point3D): Opposite corner of the box (Required).
+Plane (P) (Plane): Base plane orientation for the box (Optional, default World XY plane).
+Outputs:
+Box (Brep): The resulting box as a Brep (6 faces forming a closed solid).
+Curve Components
+Interpolate (Curve Through Points)
+Category: Curve/Spline
+Description: Creates an interpolated Nurbs curve that passes through a set of given points (control points lie on the curve).
+Inputs:
+Vertices (V) (Point3D): List of points that the curve will interpolate through, in order (Required).
+Degree (D) (Integer): The degree of the curve (Optional, default 3 for a smooth cubic curve).
+Periodic (P) (Boolean): True to make the curve periodic (closed and smooth), or False for an open curve (Optional, default False).
+KnotStyle (K) (Integer): Knot spacing mode (0 = uniform, 1 = chord, 2 = sqrtChord) (Optional, default 0).
+Outputs:
+Curve (Curve): The resulting interpolated Nurbs curve.
+Length (Number): The length of the curve.
+Domain (Domain): The parameter domain of the curve.
+Nurbs Curve
+Category: Curve/Spline
+Description: Constructs a Nurbs curve from control points (not necessarily passing through them), with specified degree and optional closure.
+Inputs:
+Vertices (V) (Point3D): Control points for the Nurbs curve (Required).
+Degree (D) (Integer): Degree of the Nurbs curve (Optional, default 3).
+Periodic (P) (Boolean): True to close the curve smoothly (periodic), False for open (Optional, default False).
+Outputs:
+Curve (Curve): The resulting Nurbs curve.
+Length (Number): The length of the curve.
+Domain (Domain): The parameter domain of the curve.
+Polyline
+Category: Curve/Spline
+Description: Creates a polyline through a sequence of points, optionally closing the polyline to form a polygon.
+Inputs:
+Vertices (V) (Point3D): Vertices for the polyline in order (Required).
+Closed (C) (Boolean): Set True to close the polyline (connect last point back to first) (Optional, default False).
+Outputs:
+Polyline (Curve): The resulting polyline curve (open or closed depending on input).
+Divide Curve
+Category: Curve/Division
+Description: Divides a curve into equal-length segments and outputs the division points and related data.
+Inputs:
+Curve (C) (Curve): The curve to divide (Required).
+Count (N) (Integer): Number of segments to divide into (Required).
+Kinks (K) (Boolean): If True, also divide at kink points (sharp corners) on the curve (Optional, default False).
+Outputs:
+Points (P) (Point3D): Division points along the curve (including the start point).
+Tangents (T) (Vector): Tangent vectors of the curve at each division point.
+Parameters (t) (Number): Parameter t-values on the curve corresponding to each division point.
+Surface Components
+Surface From Points
+Category: Surface/Freeform
+Description: Creates a Nurbs surface using a 2D grid of points as the surface’s control points. Often used to generate a terrain or lofted surface from point data.
+Inputs:
+Points (P) (Point3D): Flattened list of grid points defining the surface, ordered row by row (Required).
+U Count (U) (Integer): Number of points in the U (first) direction per row (Required – defines the grid width).
+Interpolate (I) (Boolean): If True, treat points as interpolated (surface will pass through them); if False, as control points (Optional, default False).
+Outputs:
+Surface (S) (Surface): The resulting Nurbs surface.
+Loft
+Category: Surface/Freeform
+Description: Creates a lofted surface through a sequence of section curves. The curves are skinned in order to form a smooth surface that passes through each curve.
+Inputs:
+Curves (C) (Curve): List of section curves to loft through (Required; the order in the list is the loft direction).
+Options (O) (Loft Options): Loft options such as loft type, closed loft, rebuild settings, etc. (Optional, default uses Grasshopper’s standard loft settings).
+Outputs:
+Loft (Brep): The resulting lofted surface or surfaces (Brep). (If the section curves form multiple separate surfaces, all are output as a Brep collection.)
+Extrude
+Category: Surface/Freeform
+Description: Extrudes geometry (points, curves, or surfaces) along a specified direction vector. Commonly used to create surfaces from curves (e.g., extruding a planar curve into a surface) or solids from surfaces.
+Inputs:
+Base (B) (Geometry): Base geometry to extrude. This can be a point (producing a line), a curve (producing a surface), or a surface (producing a solid Brep) (Required).
+Direction (D) (Vector): Extrusion direction and distance as a vector (Required – the length of the vector defines extrusion length).
+Outputs:
+Extrusion (E) (Geometry/Brep): The extrusion result. (Type depends on input: extruding a curve yields a Surface/Brep, extruding a surface yields a Brep solid.)
+Solid Operation Components
+Solid Union
+Category: Intersect/Shape
+Description: Computes the Boolean union of multiple solid Breps. All input Breps are combined into a single Brep if possible, merging overlapping volumes.
+Inputs:
+Breps (B) (Brep): List of Breps (solid volumes) to union together (Required).
+Outputs:
+Result (R) (Brep): The unioned solid result (a single Brep if the operation succeeds, or multiple if they were disjoint).
+Solid Difference
+Category: Intersect/Shape
+Description: Computes the Boolean difference between two sets of Breps. Subtracts the volume of set B from the volume of set A.
+Inputs:
+Breps A (A) (Brep): First set of Brep(s) to subtract from (these will have volume removed) (Required).
+Breps B (B) (Brep): Second set of Brep(s) to subtract (these act as the cutting volumes) (Required).
+Outputs:
+Result (R) (Brep): The resulting Brep after subtracting B from A.
+Solid Intersection
+Category: Intersect/Shape
+Description: Computes the Boolean intersection of two sets of Breps. The result is the volume common to both set A and set B.
+Inputs:
+Breps A (A) (Brep): First set of Brep(s) (Required).
+Breps B (B) (Brep): Second set of Brep(s) (Required).
+Outputs:
+Result (R) (Brep): The intersecting volume as a Brep (the solid region common to A and B).
+Transformation Components
+Move
+Category: Transform/Euclidean
+Description: Translates (moves) geometry from one location to another by a given translation vector.
+Inputs:
+Geometry (G) (Geometry): The geometry to move (points, curves, surfaces, etc.) (Required).
+Motion (T) (Vector): The translation vector indicating direction and distance to move (Required).
+Outputs:
+Geometry (G) (Geometry): The moved geometry, in the same shape but new location.
+Transform (X) (Transform): The transformation data (matrix) representing the move.
+Rotate
+Category: Transform/Euclidean
+Description: Rotates geometry in a plane by a given angle. By default, rotation occurs in the World XY plane around the Z-axis through the origin (unless a custom plane is provided).
+Inputs:
+Geometry (G) (Geometry): The geometry to rotate (Required).
+Angle (A) (Number): Rotation angle in radians (Required).
+Plane (P) (Plane): Plane defining the rotation center and axis (Optional, default World XY plane, rotating around its Z-axis at the plane’s origin).
+Outputs:
+Geometry (G) (Geometry): The rotated geometry.
+Transform (X) (Transform): The transformation data representing the rotation.
+Rotate 3D
+Category: Transform/Euclidean
+Description: Rotates geometry in 3D space around a specified axis and center point by a given angle. This allows arbitrary axis rotations, not limited to a principal plane.
+Inputs:
+Geometry (G) (Geometry): The geometry to rotate (Required).
+Angle (A) (Number): Rotation angle in radians (Required).
+Center (C) (Point3D): Center point of rotation (Optional, default (0,0,0) origin).
+Axis (X) (Vector): Axis of rotation (direction vector) (Optional, default World Z-axis (0,0,1)).
+Outputs:
+Geometry (G) (Geometry): The rotated geometry.
+Transform (X) (Transform): The transformation data for this 3D rotation.
+Scale
+Category: Transform/Affine
+Description: Scales geometry uniformly in all directions from a center point by a scale factor. Useful for resizing geometry larger or smaller.
+Inputs:
+Geometry (G) (Geometry): The geometry to scale (Required).
+Center (C) (Point3D): Center point of scaling (Optional, default (0,0,0) or object’s centroid if not specified).
+Factor (F) (Number): Scaling factor (Required – e.g. 2.0 doubles size, 0.5 halves it; default 1.0 yields no change).
+Outputs:
+Geometry (G) (Geometry): The scaled geometry.
+Transform (X) (Transform): The transformation data for this scale operation.
+Mirror
+Category: Transform/Euclidean
+Description: Mirrors (reflects) geometry across a specified plane, producing a symmetrical copy across that plane.
+Inputs:
+Geometry (G) (Geometry): The geometry to mirror (Required).
+Plane (P) (Plane): The mirror plane. Geometry will reflect across this plane (Optional, default World XY plane as the mirror).
+Outputs:
+Geometry (G) (Geometry): The mirrored geometry.
+Transform (X) (Transform): The transformation data representing the mirror operation.
+Vector Components
+Vector XYZ (Construct Vector)
+Category: Vector/Vector
+Description: Constructs a vector from its X, Y, and Z components. This is analogous to a point, but treated as a direction and magnitude rather than a location.
+Inputs:
+X component (X) (Number): The X value of the vector (Optional, default 0.0).
+Y component (Y) (Number): The Y value of the vector (Optional, default 0.0).
+Z component (Z) (Number): The Z value of the vector (Optional, default 0.0).
+Outputs:
+Vector (V) (Vector): The resulting constructed vector.
+Length (L) (Number): The length (magnitude) of the vector.
+Value Format: (X, Y, Z) – e.g. (0, 0, 1) represents a unit vector in the Z direction.
+Vector 2Pt
+Category: Vector/Vector
+Description: Creates a vector defined by two points: from a start point (tail) to an end point (tip). Essentially, it computes the directional difference between two points.
+Inputs:
+Point A (A) (Point3D): Base point (tail of the vector) (Required).
+Point B (B) (Point3D): Tip point (head of the vector) (Required).
+Unitize (U) (Boolean): If True, the resulting vector is unitized (scaled to length 1) regardless of the original distance (Optional, default False).
+Outputs:
+Vector (V) (Vector): The resulting vector from A to B (if U = True, this will be a unit vector in that direction).
+Length (L) (Number): The length (magnitude) of the vector (distance from A to B before any unitizing).
+Unit Vector (Unitize)
+Category: Vector/Vector
+Description: Takes a vector and returns a unit vector in the same direction. This normalizes the vector’s length to 1 without changing its direction.
+Inputs:
+Vector (V) (Vector): The input vector to unitize (Required).
+Outputs:
+Vector (V) (Vector): A unit vector (length = 1) pointing in the same direction as the input.
+Amplitude
+Category: Vector/Vector
+Description: Sets the amplitude (length) of a vector to a specified value, preserving its direction. Often used to scale a direction vector to a needed length.
+Inputs:
+Vector (V) (Vector): The base vector to adjust (Required).
+Amplitude (A) (Number): The target length for the vector (Required).
+Outputs:
+Vector (V) (Vector): The resulting vector with the specified length (amplitude) in the same direction as the original.
+Cross Product
+Category: Vector/Vector
+Description: Computes the cross product of two vectors. The cross product is a vector perpendicular to both input vectors, with magnitude related to the area of the parallelogram they span.
+Inputs:
+Vector A (A) (Vector): The first vector (Required).
+Vector B (B) (Vector): The second vector (Required).
+Unitize (U) (Boolean): If True, unitize the output vector (so result will be length 1 in perpendicular direction) (Optional, default False).
+Outputs:
+Vector (V) (Vector): The cross product vector (perpendicular to A and B).
+Length (L) (Number): The length of the cross product vector (which equals the area of the parallelogram formed by A and B if neither was unitized).
+Dot Product
+Category: Vector/Vector
+Description: Computes the dot product of two vectors. The dot product is a scalar representing the degree of alignment of the two vectors (it equals the product of their lengths times the cosine of the angle between them).
+Inputs:
+Vector A (A) (Vector): The first vector (Required).
+Vector B (B) (Vector): The second vector (Required).
+Unitize (U) (Boolean): If True, unitize both input vectors before computing the dot product (Optional, default False).
+Outputs:
+Dot product (D) (Number): The dot product result (a numeric value). (If U was true, this will effectively be the cosine of the angle between A and B, since both vectors would have length 1.)
+Basic Utility Components
+Number Slider
+Category: Params/Input
+Description: A UI slider for selecting numeric values. It outputs a number that can be an integer, floating, or within a specified range. Sliders are commonly used to provide adjustable input values in Grasshopper.
+Inputs: (none) – the slider is a standalone input control.
+Outputs:
+Value (Number): The current numeric value of the slider. (This value changes as you drag the slider or edit it.)
+Example: A slider set from 0 to 10 could output any value in that range. For instance, if the slider is at 5.5, it outputs 5.5 to any connected components.
+Series
+Category: Sets/Sequence
+Description: Generates a sequence (series) of numbers defined by a start value, step size, and count. Useful for creating number lists such as indices or parametric inputs.
+Inputs:
+Start (S) (Number): The first number in the series (Optional, default 0).
+Step (N) (Number): The increment to add for each subsequent number (Optional, default 1).
+Count (C) (Integer): The total number of values to produce in the series (Optional, default 10).
+Outputs:
+Series (S) (Number): A list of numbers forming the series.
+Example: If Start = 0, Step = 2, Count = 5, the series output will be [0, 2, 4, 6, 8].
+Panel
+Category: Params/Input
+Description: A panel for displaying text, numbers, or data, and for entering manual data or notes. Panels are versatile: they can show results (when connected to a component’s output) or serve as input by containing typed text/values.
+Inputs: (none required) – you can connect any data to a Panel to visualize it, but the panel itself doesn’t need an input to function.
+Outputs:
+Content (Text or Data): The content of the panel. This could be text (string) if used for notes or any data that has been internalized or written in the panel. If the panel is used to input a number or list (by typing into it), it outputs that data in its appropriate type.
+Value Format: When displaying a point or vector, the panel shows it as (X, Y, Z). For lists, it shows one item per line. For generic data, it shows a text representation of that data.
+Boolean Logic Components
+Boolean Toggle
+Category: Params/Input
+Description: A toggle switch for a boolean value. It allows the user to manually switch between True and False. Often used to turn options on/off or to drive conditional flows in definitions.
+Inputs: (none) – it’s an interactive control.
+Outputs:
+Value (Boolean): The current boolean state (True or False) of the toggle.
+Stream Filter (If)
+Category: Sets/Tree
+Description: Routes data from one of two input streams based on an index (often used as a boolean condition). By using a Boolean Toggle (or any 0/1 integer) as the gate index, this component acts like an if-else switch: outputting one stream if false (0) or the other if true (1).
+Inputs:
+Gate (G) (Integer): The index of the stream to pass through (commonly 0 or 1). (If a Boolean is connected, False will be interpreted as 0 and True as 1.)
+Stream 0 (Generic Data): The data for output if G = 0 (e.g. the “false” case) (Required).
+Stream 1 (Generic Data): The data for output if G = 1 (e.g. the “true” case) (Required).
+Outputs:
+Stream (S) (Generic Data): The passed-through data from either Stream 0 or Stream 1, depending on the gate value. (Only one of the streams reaches the output at a time.)
+Example: If Stream 0 is a circle and Stream 1 is a square, connecting a Boolean Toggle to G will output the circle when the toggle is False, or the square when the toggle is True.

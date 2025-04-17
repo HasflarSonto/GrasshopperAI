@@ -21,10 +21,12 @@ Component Hierarchy and Prerequisites:
 1. Base Components (No Inputs Required):
    - Plane: Used as reference for other components
    - Point: Used for positioning and reference
+   - Number Slider: Used to create a value
+   - Panel: String input
+
 
 2. Primary Shape Components (Require Base Components):
-   - Circle CNR: Requires [Plane, Radius]
-   - Rectangle: Requires [Plane, Width, Height]
+   - Circle: Requires [Plane, Radius]
    - Line: Requires [Point A, Point B]
    - Arc: Requires [Plane, Start Angle, End Angle]
 
@@ -39,7 +41,7 @@ Component Hierarchy and Prerequisites:
    - Scale: Requires [Geometry, Factor]
 
 Component Prerequisites:
-- Before using Circle CNR:
+- Before using Circle:
   1. Must have a Plane component
   2. Must have a Number Slider for radius
   3. Connect Plane to ""P"" input

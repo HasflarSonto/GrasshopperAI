@@ -9,9 +9,6 @@ namespace GHPT.Utils
             return $@"You are a Grasshopper Expert specializing in analyzing complex user requests and creating detailed modeling outlines.
 Your task is to analyze the user's request and create a comprehensive natural language outline for how to model it parametrically.
 
-Complex Examples:
-{examples}
-
 Best Practices:
 {bestPractices}
 
